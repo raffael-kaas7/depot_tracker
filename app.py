@@ -8,7 +8,14 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 
-app = Dash(__name__, suppress_callback_exceptions=True)
+app = Dash(
+    __name__,
+    external_stylesheets=[
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
+        "https://fonts.googleapis.com/css2?family=Inter&display=swap"
+    ]
+)
+
 server = app.server
 
 # hard init two comdirect depots (uncomment if only one needed, setup in .env)
@@ -59,32 +66,44 @@ def render_depot_table(_):
         return df
 
     def make_table(df, title):
-        table_header = html.Tr([
-            html.Th("WKN"), html.Th("Stück"),
-            html.Th("Kaufpreis (€)"), html.Th("Kaufwert (€)"),
-            html.Th("Akt. Preis (€)"), html.Th("Akt. Wert (€)"),
-            html.Th("Veränderung (%)")
-        ])
+        from dash import html
+
+        table_header = html.Thead(html.Tr([
+            html.Th("📄 WKN"), html.Th("📌 Stück"),
+            html.Th("💰 Kaufpreis"), html.Th("🧾 Kaufwert"),
+            html.Th("📈 Akt. Preis"), html.Th("💼 Akt. Wert"),
+            html.Th("📊 Veränderung")
+        ]))
 
         table_rows = []
         for _, row in df.iterrows():
+            performance = row["performance_%"]
+            perf_icon = "⬆️" if performance > 0 else ("⬇️" if performance < 0 else "➡️")
+            perf_color = "green" if performance > 0 else ("red" if performance < 0 else "gray")
+
             table_rows.append(html.Tr([
                 html.Td(row["wkn"]),
                 html.Td(f"{row['stueck']:.2f}"),
-                html.Td(f"{row['kaufpreis']:.2f}"),
-                html.Td(f"{row['kaufwert']:.2f}"),
-                html.Td(f"{row['aktuell_preis']:.2f}"),
-                html.Td(f"{row['aktuell_wert']:.2f}"),
-                html.Td(
-                    f"{row['performance_%']:.2f}",
-                    style={"color": "green" if row["performance_%"] > 0 else "red"}
-                )
+                html.Td(f"{row['kaufpreis']:.2f} €"),
+                html.Td(f"{row['kaufwert']:.2f} €"),
+                html.Td(f"{row['aktuell_preis']:.2f} €"),
+                html.Td(f"{row['aktuell_wert']:.2f} €"),
+                html.Td([
+                    html.Span(perf_icon + f" {performance:.2f} %",
+                            style={"color": perf_color, "fontWeight": "bold"})
+                ])
             ]))
 
         return html.Div([
-            html.H3(title, className="mt-4"),
-            html.Table([table_header] + table_rows, className="table table-striped")
-        ])
+            html.H4(title, className="mb-3 mt-4"),
+            html.Div([
+                html.Table(
+                    children=[table_header, html.Tbody(table_rows)],
+                    className="table table-hover table-sm border rounded shadow-sm"
+                )
+            ], className="table-responsive")
+        ], className="p-3 bg-light rounded shadow-sm")
+
 
     # → Daten abrufen und verarbeiten
     df1 = process_positions(service_cd_1.fetch_positions())
