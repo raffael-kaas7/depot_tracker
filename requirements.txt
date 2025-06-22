@@ -3,3 +3,5 @@ dash
 flask
 pandas
 python-dotenv
+dash-bootstrap-components
+pyyaml

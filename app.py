@@ -1,65 +1,102 @@
-from dash import Dash, html, dcc
+from dash import Dash, Output, Input
+from frontend.layout import create_layout
+from backend.api.comdirect_api import ComdirectAPI
+from backend.data.data_manager import DataManager
+from backend.logic.depot_service import DepotService
+
+import os
+from dotenv import load_dotenv
 import pandas as pd
-from comdirect_api import *
+
+app = Dash(__name__, suppress_callback_exceptions=True)
+server = app.server
+
+# hard init two comdirect depots (uncomment if only one needed, setup in .env)
+
+# init api and authenticate
+api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name="comdirect-active", session_id="comdirect-active-depot", request_id="000001")
+api_cd_1.authenticate()
+api_cd_1.save_mock_positions(target_value=100000)
+#api_cd_1.save_mock_statements()
+api_cd_1.save_mock_depot_id()
+
+# init api and authenticate
+api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name="comdirect-dividends", session_id="comdirect-dividend-depot", request_id="000002")
+api_cd_2.authenticate()
+api_cd_2.save_mock_positions(target_value=30000)
+#api_cd_1.save_mock_statements()
+api_cd_2.save_mock_depot_id()
+
+# data manager object to handle data base
+data_cd_1 = DataManager(backend="yaml")
+data_cd_2 = DataManager(backend="yaml")
+
+# use service object to analyze depot data 
+service_cd_1 = DepotService(api_cd_1, data_cd_1)
+service_cd_2 = DepotService(api_cd_2, data_cd_2)
+
+app.layout = create_layout()
+
+@app.callback(
+    Output("depot-table", "children"),
+    Input("depot-table", "id")
+)
+def render_depot_table(_):
+    import pandas as pd
+    from dash import html
+
+    def process_positions(positions):
+        df = pd.json_normalize(positions)
+
+        df["wkn"] = df.get("instrument.wkn", df.get("wkn"))
+        df["stueck"] = pd.to_numeric(df["quantity.value"], errors="coerce")
+        df["kaufpreis"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce")
+        df["kaufwert"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce")
+        df["aktuell_preis"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce")
+        df["aktuell_wert"] = pd.to_numeric(df["currentValue.value"], errors="coerce")
+        df["performance_%"] = round(((df["aktuell_wert"] - df["kaufwert"]) / df["kaufwert"]) * 100, 2)
+
+        return df
+
+    def make_table(df, title):
+        table_header = html.Tr([
+            html.Th("WKN"), html.Th("Stück"),
+            html.Th("Kaufpreis (€)"), html.Th("Kaufwert (€)"),
+            html.Th("Akt. Preis (€)"), html.Th("Akt. Wert (€)"),
+            html.Th("Veränderung (%)")
+        ])
+
+        table_rows = []
+        for _, row in df.iterrows():
+            table_rows.append(html.Tr([
+                html.Td(row["wkn"]),
+                html.Td(f"{row['stueck']:.2f}"),
+                html.Td(f"{row['kaufpreis']:.2f}"),
+                html.Td(f"{row['kaufwert']:.2f}"),
+                html.Td(f"{row['aktuell_preis']:.2f}"),
+                html.Td(f"{row['aktuell_wert']:.2f}"),
+                html.Td(
+                    f"{row['performance_%']:.2f}",
+                    style={"color": "green" if row["performance_%"] > 0 else "red"}
+                )
+            ]))
+
+        return html.Div([
+            html.H3(title, className="mt-4"),
+            html.Table([table_header] + table_rows, className="table table-striped")
+        ])
+
+    # → Daten abrufen und verarbeiten
+    df1 = process_positions(service_cd_1.fetch_positions())
+    df2 = process_positions(service_cd_2.fetch_positions())
+
+    # → Rückgabe: beide Tabellen untereinander
+    return html.Div([
+        make_table(df1, "📁 Aktiv-Depot"),
+        make_table(df2, "💸 Dividenden-Depot")
+    ])
 
 
-# 1. get initial token
-initial = get_initial_token()
-access_token = initial["access_token"]
-
-# 2. get session info needed for authentication
-session_obj = get_session_info(access_token)
-
-# 3. call for tan authentication (Photo Push Tan)
-challenge = validate_tan(access_token, session_obj)
-print("🔐 Activate photo TAN")
-input("↵ Press Enter after activating the TAN: ...")
-#tan = input() # if we want to give a TAN number and not using photo tan
-
-# 4. activate tan
-activate_tan(access_token, session_obj, json.loads(challenge)["id"])
-
-# 5. check authentication and retrieve secondary token for full comdirect access
-try:
-    final = get_secondary_token(access_token)
-    final_token = final["access_token"]
-    print("final_token", final_token)
-    print("authentication fully completed")
-
-except requests.exceptions.HTTPError as e:
-    print(f"HTTP error occurred: {e}")
-
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
-
-
-# 6. Depot abrufen
-depot_id = get_depot_id(final_token)
-positions = get_positions(final_token, depot_id)
-
-# 7. Dash App anzeigen
-df = pd.json_normalize(positions)
-
-
-app = Dash(__name__)
-
-app.layout = html.Div([
-    html.H1("📊 Comdirect Depotübersicht"),
-    dcc.Graph(
-        figure={
-            "data": [{
-                "x": df["wkn"],
-                "y": df["currentValue.value"],
-                "type": "bar",
-                "name": "Depotpositionen"
-            }],
-            "layout": {
-                "title": "Depotpositionen nach aktuellem Wert"
-            }
-        }
-    )
-])
 
 if __name__ == "__main__":
-
     app.run(debug=False)
