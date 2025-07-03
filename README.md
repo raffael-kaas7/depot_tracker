@@ -1,6 +1,6 @@
 # Depot Tracking Software (Limited to Comdirect currently)
 
-Implement to track your my portfolios of Comdirect. The Motivation behind is mainly to track dividend income, since these features are behind paywall in common used portfolio tracker software (finanzfluss, parqet). So far, very limited features and lock and feel.
+Implemented to track my Comdirect portfolios.The main motivation is to monitor dividend income, as this feature is often locked behind a paywall in commonly used portfolio tracking software like Finanzfluss or Parqet. So far, the app has very limited features and a basic look and feel.
 
 ## Features
 
@@ -11,10 +11,10 @@ Implement to track your my portfolios of Comdirect. The Motivation behind is mai
 - Visualizes dividend income over multiple years  
 
 
+(No real data in the screenshots ;-))
 ![image](data/screenshot_dummy_positions.png)
 
 ![image](data/screenshot_dummy_allocation.png)
-
 
 ![image](data/screenshot_dummy_dividends.png)
 

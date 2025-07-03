@@ -4,3 +4,4 @@
 mock/*
 .vscode/*
 data/dividends.yaml
+data/wkn_name_cache.json
