@@ -8,11 +8,12 @@ class MockHelper:
         self.mock_folder = os.path.join("mock", self.depot_name)
         os.makedirs(self.mock_folder, exist_ok=True)
 
-    def normalize_positions(self, positions: list, depot_value=50000):
-        current_total = sum(float(p["currentValue"]["value"]) for p in positions)
-        if current_total == 0:
-            raise ValueError("Aktueller Gesamtwert ist 0 – kann nicht normalisieren")
-        factor = depot_value / current_total
+    def normalize_positions(self, positions: list, init_value=50000):
+        """ normalize purchase Value to init_value"""
+        purchase_value_total = sum(float(p["purchaseValue"]["value"]) for p in positions)
+        if purchase_value_total == 0:
+            raise ValueError("Purchase Value is 0 – can not be normalized")
+        factor = init_value / purchase_value_total
 
         for p in positions:
             count = float(p["quantity"]["value"])

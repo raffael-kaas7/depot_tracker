@@ -3,3 +3,4 @@
 *.pyc
 mock/*
 .vscode/*
+data/dividends.yaml

@@ -4,8 +4,9 @@ from backend.api.mock_helper import MockHelper
 import os
 
 class BaseBankAPI(ABC):
-    def __init__(self, name: str):
+    def __init__(self, name: str, account_id: str):
         self.name = name
+        self.account_id = account_id
         self.use_mock = os.getenv("USE_MOCK", "false").lower() == "true"
         self.mock = MockHelper(depot_name=name)
 
@@ -42,13 +43,12 @@ class BaseBankAPI(ABC):
             except ValueError:
                 return obj
         return obj
-        
-    def save_mock_positions(self, normalize=True, target_value=50000):
-        self.mock.save_mock_positions(self.get_positions(), normalize, target_value)
+
+    def save_mock_positions(self, normalize=True, init_value=50000):
+        self.mock.save_mock_positions(self.get_positions(), normalize, init_value)
 
     def save_mock_statements(self):
-        pass
-        #self.mock.save_mock_statements("statements.json", statements)
+       self.mock.save_mock_statements(self.get_statements())
 
     def save_mock_depot_id(self):
         self.mock.save_mock_depot_id(depot_id=self.depot_id)

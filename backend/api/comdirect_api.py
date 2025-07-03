@@ -3,14 +3,16 @@ from backend.api.mock_helper import MockHelper
 
 import requests
 import json
+import csv
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv() # private data setup from .env file 
 
 class ComdirectAPI(BaseBankAPI):
-    def __init__(self, username, pw, depot_name, session_id, request_id):
-        super().__init__(name=depot_name)
+    def __init__(self, username, pw, depot_name, account_id, session_id, request_id):
+        super().__init__(name=depot_name, account_id=account_id)
 
         self.base_url = "https://api.comdirect.de"
         self.oauth_url = f"{self.base_url}/oauth/token"
@@ -76,7 +78,7 @@ class ComdirectAPI(BaseBankAPI):
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.final_token}",
                 "x-http-request-info": json.dumps({
-                    "clientRequestId": {"sessionId": self.session_id, "requestId": "3"}
+                    "clientRequestId": {"sessionId": self.session_id, "requestId": self.request_id}
                 })
             }
             r = requests.get(url, headers=headers)
@@ -85,10 +87,41 @@ class ComdirectAPI(BaseBankAPI):
 
         return self._sanitize_numbers(positions_list)
 
+
     def get_statements(self):
-        #if self.use_mock:
-        return self.mock.load_mock_statements()
-    
+        transactions = []
+
+        # TODO: this currently does not work to retrieve full two year statements. 
+        if not self.use_mock:
+            # get statements from last two years
+            from_date = datetime.today() - timedelta(days=2 * 365)
+            to_date = datetime.today()
+
+            url = f"{self.base_url}/api/banking/v1/accounts/{self.account_id}/transactions"
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.final_token}",
+                "x-http-request-info": json.dumps({
+                    "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
+                })
+            }
+            params = {
+                "fromDate": from_date.strftime("%Y-%m-%d"),
+                "toDate": to_date.strftime("%Y-%m-%d")
+            }
+
+            r = requests.get(url, headers=headers, params=params)
+            r.raise_for_status()
+
+            transactions = r.json().get("values", [])
+
+        if self.use_mock:
+            # 🔁 Wenn Mock-Modus aktiv: Lade lokal gespeicherte Datei
+            transactions = self.mock.load_mock_statements()
+
+        return self._sanitize_numbers(transactions)
+        
     def get_depot_id(self): 
         return self.depot_id
 
@@ -101,8 +134,6 @@ class ComdirectAPI(BaseBankAPI):
             "username": self.username,
             "password": self.pw
         }
-
-        print("data: ", data)
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         r = requests.post(self.oauth_url, data=data, headers=headers)
         r.raise_for_status()

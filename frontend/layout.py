@@ -18,7 +18,17 @@ def create_layout():
             ], className="custom-tab", selected_className="custom-tab--selected"),
 
             dcc.Tab(label="📊 Dividenden", children=[
-                html.Div(id="dividenden-chart", className="mt-4")
-            ], className="custom-tab", selected_className="custom-tab--selected"),
+                html.Div([
+                    html.H5("📅 Jahre auswählen:", className="mb-2"),
+                    dcc.Checklist(
+                        id="year-selector",
+                        inline=True,
+                        labelStyle={"marginRight": "10px"},
+                        style={"marginBottom": "20px"}
+                    ),
+                    dcc.Graph(id="dividenden-chart"),
+                    html.Div(id="dividenden-summary", className="mt-4")
+                ])
+            ]),
         ], className="mb-4", parent_className="custom-tabs")
     ], fluid=True, className="p-4")
