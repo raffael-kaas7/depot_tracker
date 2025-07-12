@@ -60,18 +60,18 @@ service_cd_1.extract_dividends_from_statements()
 service_cd_2.extract_dividends_from_statements()
 
 dividends_file = ""
-if os.getenv("USE_MOCK", "false").lower() == "true":
+if os.getenv("USE_MOCK", "false").lower() == "true" and os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true":
     dividends_file = "./mock/generated_mock_data/dividends_mock.yaml"
 else:
-        dividends_file = "data/dividends.yaml"
+    dividends_file = "data/dividends.yaml"
 
 app.layout = create_layout()
 
 @app.callback(
     Output("depot-table", "children"),
-    Input("depot-table", "id")
+    Input("table-switch", "value")
 )
-def render_depot_table(_):
+def render_depot_table(table_mode):
     
     def process_depot(positions, title):
         df = pd.json_normalize(positions)
@@ -83,6 +83,10 @@ def render_depot_table(_):
         df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce")
         df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce")
         df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 2)
+
+        total_current_value = df["current_value"].sum()
+
+        df["percentage_in_depot"] = round((df["current_value"] / total_current_value) * 100, 2)
 
         # get name from wkn via yfinance
         df["name"] = df["wkn"].apply(wkn_to_name_lookup)
@@ -103,6 +107,7 @@ def render_depot_table(_):
                 {"name": "Current Price (€)", "id": "current_price", "type": "numeric"},
                 {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
                 {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
+                {"name": "Percentage in Depot (%)", "id": "percentage_in_depot", "type": "numeric"},
             ],
             data=df.to_dict("records"),
             sort_action="native",  # Enables sorting
@@ -140,6 +145,7 @@ def render_depot_table(_):
     # Hole Positionen beider Depots
     pos1 = service_cd_1.fetch_positions()
     pos2 = service_cd_2.fetch_positions()
+    all_pos = pos1 + pos2
 
     total_pos1 = service_cd_1.compute_summary()
     total_pos2 = service_cd_2.compute_summary()
@@ -156,7 +162,11 @@ def render_depot_table(_):
         html.P(f"Relative Difference: {relative_diff:.2f} %")
     ])
     
-    return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
+    if table_mode == "single":
+        return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
+    else:
+        return html.Div([summary_div, process_depot(all_pos, "Combined Depots")])
+        
 
 @app.callback(
     Output("asset-piechart", "children"),
@@ -240,7 +250,7 @@ def render_dividenden_chart(selected_years):
         barmode="group",
         title="📈 Monatliche Dividenden",
         labels={"amount": "Dividenden in €", "month_name": "Monat", "year": "Jahr"},
-        height=450
+        height=450,
     )
 
     # --- 🧾 Zusammenfassung ---

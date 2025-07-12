@@ -10,6 +10,15 @@ def create_layout():
 
         dcc.Tabs([
             dcc.Tab(label="📄 Depotpositionen", children=[
+                dcc.RadioItems(
+                    id="table-switch",
+                    options=[
+                        {"label": "Depots", "value": "single"},
+                        {"label": "Combined Positions", "value": "combined"}
+                    ],
+                    value="single",
+                    inline=True
+                ),
                 html.Div(id="depot-table", className="mt-4")
             ], className="custom-tab", selected_className="custom-tab--selected"),
 
