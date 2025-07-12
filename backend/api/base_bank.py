@@ -8,10 +8,14 @@ class BaseBankAPI(ABC):
         self.name = name
         self.account_id = account_id
         self.use_mock = os.getenv("USE_MOCK", "false").lower() == "true"
+        self.use_generated_mock_data = os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
         self.mock = MockHelper(depot_name=name)
 
         if self.use_mock:
-            print(f"⚠️  MOCK-MODUS aktiv für {self.name}")
+            if self.use_generated_mock_data:
+                print(f"⚠️  Using GENERATED DATA for {self.name}")
+            else:
+                print(f"⚠️  OFFLINE-MODE active for {self.name}")
 
     @abstractmethod
     def authenticate(self):

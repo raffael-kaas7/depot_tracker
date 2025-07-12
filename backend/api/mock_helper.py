@@ -5,7 +5,11 @@ from typing import Union
 class MockHelper:
     def __init__(self, depot_name):
         self.depot_name = depot_name
-        self.mock_folder = os.path.join("mock", self.depot_name)
+        self.use_generated_mock_data = os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
+        if self.use_generated_mock_data: 
+            self.mock_folder = os.path.join("mock", "generated_mock_data/", depot_name)  
+        else:
+            self.mock_folder = os.path.join("mock", self.depot_name)
         os.makedirs(self.mock_folder, exist_ok=True)
 
     def normalize_positions(self, positions: list, init_value=50000):

@@ -12,11 +12,11 @@ Implemented to track my Comdirect portfolios.The main motivation is to monitor d
 
 
 (No real data in the screenshots ;-))
-![image](data/screenshot_dummy_positions.png)
+![image](data/img/screenshot_dummy_positions.png)
 
-![image](data/screenshot_dummy_allocation.png)
+![image](data/img/screenshot_dummy_allocation.png)
 
-![image](data/screenshot_dummy_dividends.png)
+![image](data/img/screenshot_dummy_dividends.png)
 
 
 ### 2. Set up your environment

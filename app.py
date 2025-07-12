@@ -28,19 +28,22 @@ server = app.server
 # hard init two comdirect depots (uncomment if only one needed, setup in .env)
 
 # init api and authenticate
-api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name="comdirect-active", account_id=os.getenv("ACCOUNT_ID_1"), session_id="comdirect-active-depot", request_id="000001")
+api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=os.getenv("DEPOT_1_NAME"), account_id=os.getenv("ACCOUNT_ID_1"), session_id="comdirect-active-depot", request_id="000001")
 api_cd_1.authenticate()
-#api_cd_1.save_mock_positions(init_value=10000)
-api_cd_1.save_mock_statements()
-#api_cd_1.save_mock_depot_id()
 
+# update offline data
+api_cd_1.save_mock_positions(init_value=10000)
+api_cd_1.save_mock_statements()
+api_cd_1.save_mock_depot_id()
 
 # init api and authenticate
-api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name="comdirect-dividends", account_id=os.getenv("ACCOUNT_ID_2"), session_id="comdirect-dividend-depot", request_id="000002")
+api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=os.getenv("DEPOT_2_NAME"), account_id=os.getenv("ACCOUNT_ID_2"), session_id="comdirect-dividend-depot", request_id="000002")
 api_cd_2.authenticate()
-#api_cd_2.save_mock_positions(init_value=5000)
+
+# update offline data
+api_cd_2.save_mock_positions(init_value=5000)
 api_cd_1.save_mock_statements()
-#api_cd_2.save_mock_depot_id()
+api_cd_2.save_mock_depot_id()
 
 # data manager object to handle data base
 data_cd_1 = DataManager(backend="yaml")

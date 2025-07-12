@@ -3,7 +3,7 @@ import yfinance as yf
 import json
 import os
 
-WKN_CACHE_PATH = "data/wkn_name_cache.json"
+WKN_CACHE_PATH = "data/wkn_name_cache.json" if os.getenv("USE_GENERATED_MOCK_DATA") == "false" else "data/wkn_name_dummy_cache.json"
 
 
 def wkn_to_name(wkn: str) -> str:

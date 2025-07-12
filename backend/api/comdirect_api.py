@@ -84,7 +84,7 @@ class ComdirectAPI(BaseBankAPI):
             r = requests.get(url, headers=headers)
             r.raise_for_status()
             positions_list = r.json()["values"]
-
+        
         return self._sanitize_numbers(positions_list)
 
 
