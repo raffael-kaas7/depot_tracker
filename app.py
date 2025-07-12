@@ -25,24 +25,27 @@ app = Dash(
 
 server = app.server
 
+DEPOT_1_NAME = os.getenv("DEPOT_1_NAME")
+DEPOT_2_NAME = os.getenv("DEPOT_2_NAME")
+
 # hard init two comdirect depots (uncomment if only one needed, setup in .env)
 
 # init api and authenticate
-api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=os.getenv("DEPOT_1_NAME"), account_id=os.getenv("ACCOUNT_ID_1"), session_id="comdirect-active-depot", request_id="000001")
+api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=DEPOT_1_NAME, account_id=os.getenv("ACCOUNT_ID_1"), session_id="comdirect-active-depot", request_id="000001")
 api_cd_1.authenticate()
 
 # update offline data
-api_cd_1.save_mock_positions(init_value=10000)
+api_cd_1.save_mock_positions(normalize=False)
 api_cd_1.save_mock_statements()
 api_cd_1.save_mock_depot_id()
 
 # init api and authenticate
-api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=os.getenv("DEPOT_2_NAME"), account_id=os.getenv("ACCOUNT_ID_2"), session_id="comdirect-dividend-depot", request_id="000002")
+api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=DEPOT_2_NAME, account_id=os.getenv("ACCOUNT_ID_2"), session_id="comdirect-dividend-depot", request_id="000002")
 api_cd_2.authenticate()
 
 # update offline data
-api_cd_2.save_mock_positions(init_value=5000)
-api_cd_1.save_mock_statements()
+api_cd_2.save_mock_positions(normalize=False)
+api_cd_2.save_mock_statements()
 api_cd_2.save_mock_depot_id()
 
 # data manager object to handle data base
@@ -69,7 +72,7 @@ app.layout = create_layout()
     Input("depot-table", "id")
 )
 def render_depot_table(_):
-
+    
     def process_depot(positions, title):
         df = pd.json_normalize(positions)
 
@@ -138,11 +141,22 @@ def render_depot_table(_):
     pos1 = service_cd_1.fetch_positions()
     pos2 = service_cd_2.fetch_positions()
 
-    table1 = process_depot(pos1, "📁 Aktiv-Depot")
-    table2 = process_depot(pos2, "💸 Dividenden-Depot")
+    total_pos1 = service_cd_1.compute_summary()
+    total_pos2 = service_cd_2.compute_summary()
 
-    return html.Div([table1, table2])
+    total_cost = total_pos1["total_cost"] + total_pos2["total_cost"]
+    total_value = total_pos1["total_value"] + total_pos2["total_value"]
 
+    relative_diff = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
+
+    summary_div = html.Div([
+        html.H4("Depot Summary", className="mt-4 mb-3"),
+        html.P(f"Total Purchase Value: {total_cost:.2f} €"),
+        html.P(f"Total Current Value: {total_value:.2f} €"),
+        html.P(f"Relative Difference: {relative_diff:.2f} %")
+    ])
+    
+    return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
 
 @app.callback(
     Output("asset-piechart", "children"),
@@ -161,7 +175,7 @@ def render_pie_charts(_):
                 "type": "pie",
                 "hole": 0.3,
             }],
-            "layout": {"title": "Aktiv-Depot"}
+            "layout": {"title": DEPOT_1_NAME}
         }
     )
 
@@ -174,7 +188,7 @@ def render_pie_charts(_):
                 "type": "pie",
                 "hole": 0.3,
             }],
-            "layout": {"title": "Dividenden-Depot"}
+            "layout": {"title": DEPOT_2_NAME}
         }
     )
 

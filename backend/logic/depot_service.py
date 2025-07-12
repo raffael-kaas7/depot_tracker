@@ -36,7 +36,8 @@ class DepotService:
     def parse_dividends(self, statements):
         pass
 
-    def compute_summary(self, positions: list) -> dict:
+    def compute_summary(self) -> dict:
+        positions = self.fetch_positions()
         total_value = sum(float(p["currentValue"]["value"]) for p in positions)
         total_cost = sum(float(p["purchaseValue"]["value"]) for p in positions)
 
