@@ -49,10 +49,13 @@ class BaseBankAPI(ABC):
         return obj
 
     def save_mock_positions(self, normalize=True, init_value=50000):
-        self.mock.save_mock_positions(self.get_positions(), normalize, init_value)
+        if not self.mock.use_generated_mock_data:
+            self.mock.save_mock_positions(self.get_positions(), normalize, init_value)
 
     def save_mock_statements(self):
-       self.mock.save_mock_statements(self.get_statements())
+        if not self.mock.use_generated_mock_data:
+            self.mock.save_mock_statements(self.get_statements())
 
     def save_mock_depot_id(self):
-        self.mock.save_mock_depot_id(depot_id=self.depot_id)
+        if not self.mock.use_generated_mock_data:
+            self.mock.save_mock_depot_id(depot_id=self.depot_id)

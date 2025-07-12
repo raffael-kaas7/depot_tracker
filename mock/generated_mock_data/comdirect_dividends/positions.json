@@ -1,0 +1,318 @@
+[
+  {
+    "depotId": "2",
+    "positionId": "443F85A7AB243079A02D4D72D791F60D",
+    "wkn": 852062,
+    "custodyType": 700,
+    "positionType": 0,
+    "hasPurchasePrice": true,
+    "quantity": {
+      "value": 50,
+      "unit": "XXX"
+    },
+    "availableQuantity": {
+      "value": 50,
+      "unit": "XXX"
+    },
+    "currentPrice": {
+      "price": {
+        "value": 135,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-03T20:35:26+02",
+      "venue": {
+        "name": "LS Exchange",
+        "venueId": "1F159CC8E9F94851A540547D508EB9A2",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "purchasePrice": {
+      "value": 150,
+      "unit": "EUR"
+    },
+    "prevDayPrice": {
+      "price": {
+        "value": 132,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-02T22:59:50+02",
+      "venue": {
+        "name": "LS Exchange",
+        "venueId": "1F159CC8E9F94851A540547D508EB9A2",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "currentValue": {
+      "value": 6750,
+      "unit": "EUR"
+    },
+    "purchaseValue": {
+      "value": 7500,
+      "unit": "EUR"
+    },
+    "purchaseValueEditable": true,
+    "profitLossPurchaseAbs": {
+      "value": -750,
+      "unit": "EUR"
+    },
+    "profitLossPurchaseRel": -10,
+    "profitLossPrevDayAbs": {
+      "value": 3,
+      "unit": "EUR"
+    },
+    "profitLossPrevDayRel": 0.022,
+    "profitLossPrevDayTotalAbs": {
+      "value": -750,
+      "unit": "EUR"
+    },
+    "version": null,
+    "hedgeability": "HEDGEABLE",
+    "availableQuantityToHedge": {
+      "value": 150,
+      "unit": "XXX"
+    },
+    "currentPriceDeterminable": true,
+    "hasIntraDayExecutedOrder": false,
+    "purchasePossible": true,
+    "sellPossible": true
+  },
+  {
+    "depotId": "2",
+    "positionId": "82FD099EF91D3C7187F5371987C90F34",
+    "wkn": "A0JNE2",
+    "custodyType": 4,
+    "positionType": 0,
+    "hasPurchasePrice": true,
+    "quantity": {
+      "value": 100,
+      "unit": "XXX"
+    },
+    "availableQuantity": {
+      "value": 100,
+      "unit": "XXX"
+    },
+    "currentPrice": {
+      "price": {
+        "value": 52,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-03T17:36:26+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "purchasePrice": {
+      "value": 45,
+      "unit": "EUR"
+    },
+    "prevDayPrice": {
+      "price": {
+        "value": 51,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-02T17:36:26+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "currentValue": {
+      "value": 5200,
+      "unit": "EUR"
+    },
+    "purchaseValue": {
+      "value": 4500,
+      "unit": "EUR"
+    },
+    "purchaseValueEditable": true,
+    "profitLossPurchaseAbs": {
+      "value": -1105.93,
+      "unit": "EUR"
+    },
+    "profitLossPurchaseRel": -85.722,
+    "profitLossPrevDayAbs": {
+      "value": 0.043,
+      "unit": "EUR"
+    },
+    "profitLossPrevDayRel": 3.006,
+    "profitLossPrevDayTotalAbs": {
+      "value": 700,
+      "unit": "EUR"
+    },
+    "version": null,
+    "hedgeability": "HEDGEABLE",
+    "availableQuantityToHedge": {
+      "value": 100,
+      "unit": "XXX"
+    },
+    "currentPriceDeterminable": true,
+    "hasIntraDayExecutedOrder": false,
+    "purchasePossible": true,
+    "sellPossible": true
+  },
+  {
+    "depotId": "2",
+    "positionId": "6FC0218DE2753622B0568DE4CCEBD96A",
+    "wkn": 899744,
+    "custodyType": 645,
+    "positionType": 0,
+    "hasPurchasePrice": true,
+    "quantity": {
+      "value": 150,
+      "unit": "XXX"
+    },
+    "availableQuantity": {
+      "value": 150,
+      "unit": "XXX"
+    },
+    "currentPrice": {
+      "price": {
+        "value": 48,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-03T17:36:10+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "purchasePrice": {
+      "value": 40,
+      "unit": "EUR"
+    },
+    "prevDayPrice": {
+      "price": {
+        "value": 49,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-02T17:36:08+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "currentValue": {
+      "value": 7200,
+      "unit": "EUR"
+    },
+    "purchaseValue": {
+      "value": 6000,
+      "unit": "EUR"
+    },
+    "purchaseValueEditable": true,
+    "profitLossPurchaseAbs": {
+      "value": 1200,
+      "unit": "EUR"
+    },
+    "profitLossPurchaseRel": 18.871,
+    "profitLossPrevDayAbs": {
+      "value": -150,
+      "unit": "EUR"
+    },
+    "profitLossPrevDayRel": 0.998,
+    "profitLossPrevDayTotalAbs": {
+      "value": -150,
+      "unit": "EUR"
+    },
+    "version": null,
+    "hedgeability": "HEDGEABLE",
+    "availableQuantityToHedge": {
+      "value": 150,
+      "unit": "XXX"
+    },
+    "currentPriceDeterminable": true,
+    "hasIntraDayExecutedOrder": false,
+    "purchasePossible": true,
+    "sellPossible": true
+  },
+  {
+    "depotId": "2",
+    "positionId": "6FC0218DE2753622B0568DE4CCEBD96A",
+    "wkn": 850663,
+    "custodyType": 645,
+    "positionType": 0,
+    "hasPurchasePrice": true,
+    "quantity": {
+      "value": 120,
+      "unit": "XXX"
+    },
+    "availableQuantity": {
+      "value": 120,
+      "unit": "XXX"
+    },
+    "currentPrice": {
+      "price": {
+        "value": 60,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-03T17:36:10+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "purchasePrice": {
+      "value": 40,
+      "unit": "EUR"
+    },
+    "prevDayPrice": {
+      "price": {
+        "value": 61,
+        "unit": "EUR"
+      },
+      "priceDateTime": "2025-07-02T17:36:08+02",
+      "venue": {
+        "name": "Xetra",
+        "venueId": "72274630AEA34CF2949911ED078A39FF",
+        "country": "DE",
+        "type": "EXCHANGE"
+      }
+    },
+    "currentValue": {
+      "value": 7200,
+      "unit": "EUR"
+    },
+    "purchaseValue": {
+      "value": 4800,
+      "unit": "EUR"
+    },
+    "purchaseValueEditable": true,
+    "profitLossPurchaseAbs": {
+      "value": 2400,
+      "unit": "EUR"
+    },
+    "profitLossPurchaseRel": 50,
+    "profitLossPrevDayAbs": {
+      "value": -150,
+      "unit": "EUR"
+    },
+    "profitLossPrevDayRel": 0.998,
+    "profitLossPrevDayTotalAbs": {
+      "value": -150,
+      "unit": "EUR"
+    },
+    "version": null,
+    "hedgeability": "HEDGEABLE",
+    "availableQuantityToHedge": {
+      "value": 150,
+      "unit": "XXX"
+    },
+    "currentPriceDeterminable": true,
+    "hasIntraDayExecutedOrder": false,
+    "purchasePossible": true,
+    "sellPossible": true
+  }
+]

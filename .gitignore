@@ -1,6 +1,7 @@
 *.env
 .venv/*
 *.pyc
+!mock/generated_mock_data/*
 mock/*
 .vscode/*
 data/dividends.yaml

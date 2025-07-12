@@ -56,6 +56,12 @@ service_cd_2 = DepotService(api_cd_2, data_cd_2)
 service_cd_1.extract_dividends_from_statements()
 service_cd_2.extract_dividends_from_statements()
 
+dividends_file = ""
+if os.getenv("USE_MOCK", "false").lower() == "true":
+    dividends_file = "./mock/generated_mock_data/dividends_mock.yaml"
+else:
+        dividends_file = "data/dividends.yaml"
+
 app.layout = create_layout()
 
 @app.callback(
@@ -183,8 +189,8 @@ def render_pie_charts(_):
     Output("dividenden-summary", "children"),
     Input("year-selector", "value")
 )
-def render_dividenden_chart(selected_years):
-    with open("data/dividends.yaml", "r") as f:
+def render_dividenden_chart(selected_years):    
+    with open(dividends_file, "r") as f:
         dividends = yaml.safe_load(f) or []
 
     # --- 📊 In DataFrame umwandeln ---
@@ -240,7 +246,7 @@ def render_dividenden_chart(selected_years):
     Input("year-selector", "id")  # ✅ Wird garantiert beim Rendern gesetzt
 )
 def init_year_selector(_):
-    with open("data/dividends.yaml", "r") as f:
+    with open(dividends_file, "r") as f:
         dividends = yaml.safe_load(f) or []
 
     df = pd.DataFrame(dividends)
