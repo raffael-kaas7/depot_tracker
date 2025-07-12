@@ -1,4 +1,4 @@
-from dash import Dash, Output, Input, dcc, html
+from dash import Dash, Output, Input, dcc, html, dash_table
 
 from frontend.layout import create_layout
 from backend.api.comdirect_api import ComdirectAPI
@@ -92,49 +92,49 @@ def render_depot_table(_):
         total_value = df["current_value"].sum()
         performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
 
-        table_header = html.Thead(html.Tr([
-            html.Th("WKN"), html.Th("Name"), html.Th("Count"),
-            html.Th("Purchase Price (€)"), html.Th("Purchase Value (€)"),
-            html.Th("Current Price (€)"), html.Th("Current Value (€)"),
-            html.Th("Performance (%)")
-        ]))
-
-        table_rows = []
-        for _, row in df.iterrows():
-            color = "green" if row["performance_%"] > 0 else "red" if row["performance_%"] < 0 else "gray"
-            icon = "🚀" if row["performance_%"] > 60 else "💥" if row["performance_%"] < -45 else ""
-
-            table_rows.append(html.Tr([
-                html.Td(row["wkn"]),
-                html.Td(row["name"]),
-                html.Td(f"{row['count']:.2f}"),
-                html.Td(f"{row['purchase_price']:.2f}"),
-                html.Td(f"{row['purchase_value']:.2f}"),
-                html.Td(f"{row['current_price']:.2f}"),
-                html.Td(f"{row['current_value']:.2f}"),
-                html.Td(f"{icon} {row['performance_%']:.2f}%", style={"color": color, "fontWeight": "bold"})
-            ]))
-
-        # End line
-        summary_row = html.Tr([
-            html.Td("Total", colSpan=4, style={"fontWeight": "bold"}),
-            html.Td(f"{total_purchase_value:.2f} €", style={"fontWeight": "bold"}),
-            html.Td(),
-            html.Td(f"{total_value:.2f} €", style={"fontWeight": "bold"}),
-            html.Td(f"{performance:.2f} %", style={
-                "fontWeight": "bold",
-                "color": "green" if performance > 0 else "red" if performance < 0 else "gray"
-            })
-        ])
-
-        table = html.Table(
-            children=[table_header, html.Tbody(table_rows + [summary_row])],
-            className="table table-hover table-striped table-bordered shadow-sm rounded"
+        # Main table
+        main_table = dash_table.DataTable(
+            columns=[
+                {"name": "WKN", "id": "wkn", "type": "text"},
+                {"name": "Name", "id": "name", "type": "text"},
+                {"name": "Count", "id": "count", "type": "numeric"},
+                {"name": "Purchase Price (€)", "id": "purchase_price", "type": "numeric"},
+                {"name": "Purchase Value (€)", "id": "purchase_value", "type": "numeric"},
+                {"name": "Current Price (€)", "id": "current_price", "type": "numeric"},
+                {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
+                {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
+            ],
+            data=df.to_dict("records"),
+            sort_action="native",  # Enables sorting
+            style_table={"overflowX": "auto"},
+            style_cell={"textAlign": "left"},
         )
 
+        # Summary table
+        summary_table = dash_table.DataTable(
+            columns=[
+                {"name": "Total Purchase Value (€)", "id": "total_purchase_value", "type": "numeric"},
+                {"name": "Total Current Value (€)", "id": "total_value", "type": "numeric"},
+                {"name": "Performance (%)", "id": "performance", "type": "numeric"},
+            ],
+            data=[
+                {
+                    "total_purchase_value": total_purchase_value,
+                    "total_value": total_value,
+                    "performance": round(performance, 2),
+                }
+            ],
+            style_table={"overflowX": "auto"},
+            style_cell={"textAlign": "left"},
+        )
+
+        # Combine both tables
         return html.Div([
-            html.H4(title, className="mt-4 mb-3"),
-            table
+            html.H4(title),
+            main_table,
+            html.Br(),
+            html.H4("Summary"),
+            summary_table
         ])
 
     # Hole Positionen beider Depots
