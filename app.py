@@ -73,7 +73,7 @@ app.layout = create_layout()
 )
 def render_depot_table(table_mode):
     
-    def process_depot(positions, title):
+    def process_depot(positions, title, summary=True):
         df = pd.json_normalize(positions)
 
         df["wkn"] = df["wkn"]
@@ -114,6 +114,9 @@ def render_depot_table(table_mode):
             style_table={"overflowX": "auto"},
             style_cell={"textAlign": "left"},
         )
+
+        if summary is False:
+            return html.Div([html.H4(title), main_table])
 
         # Summary table
         summary_table = dash_table.DataTable(
@@ -165,7 +168,7 @@ def render_depot_table(table_mode):
     if table_mode == "single":
         return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
     else:
-        return html.Div([summary_div, process_depot(all_pos, "Combined Depots")])
+        return html.Div([summary_div, process_depot(all_pos, "Combined Depots", summary=False)])
         
 
 @app.callback(
@@ -282,6 +285,49 @@ def init_year_selector(_):
 
     print("📅 Verfügbare Jahre:", years)
     return options, years
+
+@app.callback(
+    Output("dividenden-table-container", "style"),
+    Output("dividenden-table-container", "children"),
+    Input("toggle-table-btn", "n_clicks")
+    )
+def update_dividenden_table(n_clicks):
+    print("Update dividends table")
+    # Tabelle ein-/ausblenden
+    if n_clicks % 2 == 0:
+        return {"display": "none"}, None
+
+    with open(dividends_file, "r") as f:
+        dividends = yaml.safe_load(f) or []
+
+    # --- 📊 In DataFrame umwandeln ---
+    df = pd.DataFrame(dividends)
+    df["date"] = pd.to_datetime(df["date"])
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
+    df["month_name"] = df["date"].dt.strftime("%b")
+    df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+    df["company"] = df["company"]
+
+    # Filter anwenden
+    filtered_data = df
+    # if selected_companies:
+    #     filtered_data = df[df["company"].isin(selected_companies)]
+
+    # Tabelle erstellen
+    table = dash_table.DataTable(
+        columns=[
+            {"name": "date", "id": "date"},
+            {"name": "company", "id": "company"},
+            {"name": "net amount", "id": "amount"}
+        ],
+        data=filtered_data.to_dict("records"),
+        sort_action="native",  # Enables sorting
+        style_table={"overflowX": "auto"},
+        page_size=50
+    )
+
+    return {"display": "block"}, table
 
 if __name__ == "__main__":
     app.run(debug=False)

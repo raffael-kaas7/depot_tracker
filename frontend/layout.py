@@ -32,7 +32,9 @@ def create_layout():
                         style={"marginBottom": "20px"}
                     ),
                     dcc.Graph(id="dividenden-chart"),
-                    html.Div(id="dividenden-summary", className="mt-4")
+                    html.Div(id="dividenden-summary", className="mt-4"),
+                    html.Button("Tabelle ein-/ausblenden", id="toggle-table-btn"),
+                    html.Div(id="dividenden-table-container", style={"display": "none"}),  # Tabelle standardmäßig ausgeblendet
                 ])
             ]),
 
