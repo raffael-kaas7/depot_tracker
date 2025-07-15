@@ -1,0 +1,23 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f9f9f9;
+    color: #212529;
+}
+
+.custom-tab {
+    font-weight: 500;
+    padding: 12px;
+}
+
+.custom-tab--selected {
+    background-color: #ffffff !important;
+    border-bottom: 3px solid #0d6efd !important;
+}
+
+.dash-table-container .dash-spreadsheet-container {
+    border: none !important;
+}
+
+.dash-table-container .dash-header {
+    font-weight: 600;
+}

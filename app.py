@@ -1,6 +1,6 @@
 from dash import Dash, Output, Input, dcc, html, dash_table
 
-from frontend.layout import create_layout
+from frontend.layout import create_layout, create_summary_row
 from backend.api.comdirect_api import ComdirectAPI
 from backend.data.data_manager import DataManager
 from backend.logic.depot_service import DepotService
@@ -12,8 +12,12 @@ import pandas as pd
 import plotly.express as px
 import yaml
 
+import locale
+
 from dotenv import load_dotenv
 
+# Set locale for formatting (German style: decimal as comma, thousands as point)
+locale.setlocale(locale.LC_ALL, 'de_DE.UTF-8')
 
 app = Dash(
     __name__,
@@ -111,27 +115,79 @@ def render_depot_table(table_mode):
             ],
             data=df.to_dict("records"),
             sort_action="native",  # Enables sorting
-            style_table={"overflowX": "auto"},
-            style_cell={"textAlign": "left"},
+            sort_by=[
+                {"column_id": "percentage_in_depot", "direction": "desc"}
+            ],
+            style_table={"overflowX": "auto", "borderRadius": "5px"},
+            style_cell={
+                "textAlign": "center",
+                "padding": "10px",
+                "fontFamily": "Arial, sans-serif",
+                "fontSize": "14px",
+                "minWidth": "120px",  
+                "maxWidth": "120px", 
+                "width": "120px",  
+            },
+            style_header={
+                "backgroundColor": "#007bff",
+                "color": "white",
+                "fontWeight": "bold",
+                "border": "1px solid #007bff",
+            },
+            style_data={
+                "border": "1px solid #ddd",
+            },
+            style_data_conditional=[
+                {
+                    "if": {"row_index": "odd"},
+                    "backgroundColor": "#f9f9f9",
+                },
+                {
+                    "if": {"row_index": "even"},
+                    "backgroundColor": "#ffffff",
+                },
+                {
+                    "if": {
+                        "column_id": "performance_%",
+                        "filter_query": "{performance_%} < 0", 
+                    },
+                    "color": "red",
+                    "fontWeight": "bold",
+                },
+                {
+                    "if": {
+                        "column_id": "performance_%",  # Nur die Performance-Spalte
+                        "filter_query": "{performance_%} >= 0",  # Positive Werte
+                    },
+                    "color": "green",
+                    "fontWeight": "bold",
+                },
+            ],
         )
 
         if summary is False:
             return html.Div([html.H4(title), main_table])
 
-        # Summary
-        summary_div = html.Div([
-        html.H4("Summary", className="mt-4 mb-3"),
-        html.P(f"Current Value: {total_value:.0f} €"),
-        html.P(f"Performance: {performance:.0f} %"),
-        html.P(f"Purchase Value: {total_purchase_value:.0f} €")
-    ])
+        # # Summary
+        # summary_div = html.Div([
+        # html.H4("Summary", className="mt-4 mb-3"),
+        # html.P(f"Current Value: {total_value:.0f} €"),
+        # html.P(f"Performance: {performance:.0f} %"),
+        # html.P(f"Purchase Value: {total_purchase_value:.0f} €")
+        # ])
+
+        summary_div = create_summary_row([
+            {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
+            {"icon": "📈", "label": "Performance", "value": f"{performance:.1f} %", "color": "success" if performance > 0 else "danger"},
+            {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_purchase_value:,.0f} €", "color": "secondary"},
+        ])
 
         # Combine both tables
         return html.Div([
             html.H4(title),
+            summary_div,
             main_table,
             html.Br(),
-            summary_div
         ])
 
     # Fetch positions from both depots
@@ -147,15 +203,14 @@ def render_depot_table(table_mode):
 
     relative_diff = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
 
-    summary_div = html.Div([
-        html.H4("Summary", className="mt-4 mb-3"),
-        html.P(f"Current Value: {total_value:.0f} €"),
-        html.P(f"Performance: {relative_diff:.0f} %"),
-        html.P(f"Purchase Value: {total_cost:.0f} €")
+    summary_div = create_summary_row([
+        {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
+        {"icon": "📈", "label": "Performance", "value": f"{relative_diff:.1f} %", "color": "success" if relative_diff > 0 else "danger"},
+        {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_cost:,.0f} €", "color": "secondary"},
     ])
     
     if table_mode == "single":
-        return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
+        return html.Div([process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
     else:
         return html.Div([summary_div, process_depot(all_pos, "All positions", summary=False)])
         

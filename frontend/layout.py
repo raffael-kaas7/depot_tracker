@@ -2,7 +2,42 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 
+def create_summary_row(summary_items):
+    """
+    Create a responsive row of summary cards.
+
+    Parameters:
+        summary_items (list): List of dictionaries with keys:
+            - icon (str): Emoji or icon
+            - label (str): Description text
+            - value (str): Value text
+            - color (str, optional): Bootstrap text color (e.g., 'success', 'danger')
+
+    Returns:
+        dbc.Row: Row of summary cards
+    """
+
+    return dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardBody([
+                    html.Div([
+                        html.Span(item["icon"], style={"fontSize": "1.5rem", "marginRight": "0.5rem"}),
+                        html.Span(item["label"], className="text-muted small"),
+                    ], className="d-flex align-items-center mb-1"),
+                    html.H5(item["value"], className=f"text-{item.get('color', 'dark')} fw-bold mb-0")
+                ])
+            ], className="shadow-sm h-100")
+        ], md=4, sm=12) for item in summary_items
+    ], className="mb-4 g-3")
+
 def create_layout():
+    """
+    Define the main layout of the app using Dash Bootstrap components and Tabs.
+
+    Returns:
+        dbc.Container: The main container layout
+    """
     return dbc.Container([
         html.H1("🔥 Comdirect - Depot Tracker 🔥", className="text-center text-primary my-4", style={
             "fontFamily": "Inter, sans-serif"
