@@ -77,12 +77,12 @@ def render_depot_table(table_mode):
         df = pd.json_normalize(positions)
 
         df["wkn"] = df["wkn"]
-        df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce")
-        df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce")
-        df["purchase_value"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce")
-        df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce")
-        df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce")
-        df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 2)
+        df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce").round(2)
+        df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce").round(2)
+        df["purchase_value"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce").round(0)
+        df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
+        df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
+        df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 0)
 
         total_current_value = df["current_value"].sum()
 
@@ -103,11 +103,11 @@ def render_depot_table(table_mode):
                 {"name": "Name", "id": "name", "type": "text"},
                 {"name": "Count", "id": "count", "type": "numeric"},
                 {"name": "Purchase Price (€)", "id": "purchase_price", "type": "numeric"},
-                {"name": "Purchase Value (€)", "id": "purchase_value", "type": "numeric"},
                 {"name": "Current Price (€)", "id": "current_price", "type": "numeric"},
+                {"name": "Purchase Value (€)", "id": "purchase_value", "type": "numeric"},
                 {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
                 {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
-                {"name": "Percentage in Depot (%)", "id": "percentage_in_depot", "type": "numeric"},
+                {"name": "Allocation (%)", "id": "percentage_in_depot", "type": "numeric"},
             ],
             data=df.to_dict("records"),
             sort_action="native",  # Enables sorting
@@ -118,34 +118,23 @@ def render_depot_table(table_mode):
         if summary is False:
             return html.Div([html.H4(title), main_table])
 
-        # Summary table
-        summary_table = dash_table.DataTable(
-            columns=[
-                {"name": "Total Purchase Value (€)", "id": "total_purchase_value", "type": "numeric"},
-                {"name": "Total Current Value (€)", "id": "total_value", "type": "numeric"},
-                {"name": "Performance (%)", "id": "performance", "type": "numeric"},
-            ],
-            data=[
-                {
-                    "total_purchase_value": total_purchase_value,
-                    "total_value": total_value,
-                    "performance": round(performance, 2),
-                }
-            ],
-            style_table={"overflowX": "auto"},
-            style_cell={"textAlign": "left"},
-        )
+        # Summary
+        summary_div = html.Div([
+        html.H4("Summary", className="mt-4 mb-3"),
+        html.P(f"Current Value: {total_value:.0f} €"),
+        html.P(f"Performance: {performance:.0f} %"),
+        html.P(f"Purchase Value: {total_purchase_value:.0f} €")
+    ])
 
         # Combine both tables
         return html.Div([
             html.H4(title),
             main_table,
             html.Br(),
-            html.H4("Summary"),
-            summary_table
+            summary_div
         ])
 
-    # Hole Positionen beider Depots
+    # Fetch positions from both depots
     pos1 = service_cd_1.fetch_positions()
     pos2 = service_cd_2.fetch_positions()
     all_pos = pos1 + pos2
@@ -159,16 +148,16 @@ def render_depot_table(table_mode):
     relative_diff = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
 
     summary_div = html.Div([
-        html.H4("Depot Summary", className="mt-4 mb-3"),
-        html.P(f"Total Purchase Value: {total_cost:.2f} €"),
-        html.P(f"Total Current Value: {total_value:.2f} €"),
-        html.P(f"Relative Difference: {relative_diff:.2f} %")
+        html.H4("Summary", className="mt-4 mb-3"),
+        html.P(f"Current Value: {total_value:.0f} €"),
+        html.P(f"Performance: {relative_diff:.0f} %"),
+        html.P(f"Purchase Value: {total_cost:.0f} €")
     ])
     
     if table_mode == "single":
         return html.Div([summary_div, process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
     else:
-        return html.Div([summary_div, process_depot(all_pos, "Combined Depots", summary=False)])
+        return html.Div([summary_div, process_depot(all_pos, "All positions", summary=False)])
         
 
 @app.callback(
@@ -212,15 +201,14 @@ def render_pie_charts(_):
 
 
 @app.callback(
-    Output("dividenden-chart", "figure"),
-    Output("dividenden-summary", "children"),
+    Output("dividend-chart", "figure"),
+    Output("dividend-summary", "children"),
     Input("year-selector", "value")
 )
-def render_dividenden_chart(selected_years):    
+def show_dividend_chart(selected_years):    
     with open(dividends_file, "r") as f:
         dividends = yaml.safe_load(f) or []
 
-    # --- 📊 In DataFrame umwandeln ---
     df = pd.DataFrame(dividends)
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
@@ -230,16 +218,13 @@ def render_dividenden_chart(selected_years):
 
     all_years = sorted(df["year"].unique())
 
-    # Falls keine Auswahl: alle anzeigen
+    # show all by default
     if not selected_years:
         selected_years = all_years
 
     df = df[df["year"].isin(selected_years)]
 
-    # --- 📊 Aggregation ---
     monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
-
-    # 🪄 Monatsnamen sortieren
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     monthly["month_name"] = pd.Categorical(monthly["month_name"], categories=month_order, ordered=True)
@@ -251,18 +236,18 @@ def render_dividenden_chart(selected_years):
         y="amount",
         color="year",
         barmode="group",
-        title="📈 Monatliche Dividenden",
-        labels={"amount": "Dividenden in €", "month_name": "Monat", "year": "Jahr"},
+        title="",
+        labels={"amount": "Dividends in €", "month_name": "Month", "year": "Year"},
         height=450,
     )
 
-    # --- 🧾 Zusammenfassung ---
+    # --- Summary ---
     total = df["amount"].sum()
     summary_per_year = df.groupby("year")["amount"].sum()
 
     summary = html.Ul([
-        html.Li(f"📦 Gesamtsumme: {total:.2f} €"),
-        *[html.Li(f"📅 {year}: {amount:.2f} €") for year, amount in summary_per_year.items()]
+        html.Li(f"👑 All time Dividends: {total:.0f} €"),
+        *[html.Li(f"📅 {year}: {amount:.0f} €") for year, amount in summary_per_year.items()]
     ])
 
     return fig, summary
@@ -270,7 +255,7 @@ def render_dividenden_chart(selected_years):
 @app.callback(
     Output("year-selector", "options"),
     Output("year-selector", "value"),
-    Input("year-selector", "id")  # ✅ Wird garantiert beim Rendern gesetzt
+    Input("year-selector", "id") 
 )
 def init_year_selector(_):
     with open(dividends_file, "r") as f:
@@ -287,8 +272,8 @@ def init_year_selector(_):
     return options, years
 
 @app.callback(
-    Output("dividenden-table-container", "style"),
-    Output("dividenden-table-container", "children"),
+    Output("dividend-table-container", "style"),
+    Output("dividend-table-container", "children"),
     Input("toggle-table-btn", "n_clicks")
     )
 def update_dividenden_table(n_clicks):
@@ -300,7 +285,6 @@ def update_dividenden_table(n_clicks):
     with open(dividends_file, "r") as f:
         dividends = yaml.safe_load(f) or []
 
-    # --- 📊 In DataFrame umwandeln ---
     df = pd.DataFrame(dividends)
     df["date"] = pd.to_datetime(df["date"])
     df["year"] = df["date"].dt.year
@@ -309,19 +293,13 @@ def update_dividenden_table(n_clicks):
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
     df["company"] = df["company"]
 
-    # Filter anwenden
-    filtered_data = df
-    # if selected_companies:
-    #     filtered_data = df[df["company"].isin(selected_companies)]
-
-    # Tabelle erstellen
     table = dash_table.DataTable(
         columns=[
             {"name": "date", "id": "date"},
             {"name": "company", "id": "company"},
             {"name": "net amount", "id": "amount"}
         ],
-        data=filtered_data.to_dict("records"),
+        data=df.to_dict("records"),
         sort_action="native",  # Enables sorting
         style_table={"overflowX": "auto"},
         page_size=50

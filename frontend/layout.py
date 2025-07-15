@@ -4,37 +4,43 @@ import dash_bootstrap_components as dbc
 
 def create_layout():
     return dbc.Container([
-        html.H1("📊 Depot Tracker", className="text-center text-primary my-4", style={
+        html.H1("🔥 Comdirect - Depot Tracker 🔥", className="text-center text-primary my-4", style={
             "fontFamily": "Inter, sans-serif"
         }),
 
         dcc.Tabs([
-            dcc.Tab(label="📄 Depotpositionen", children=[
+            dcc.Tab(label="📈 Assets", children=[
                 dcc.RadioItems(
                     id="table-switch",
                     options=[
-                        {"label": "Depots", "value": "single"},
-                        {"label": "Combined Positions", "value": "combined"}
+                        {"label": "Separated Depots", "value": "single"},
+                        {"label": "Combined", "value": "combined"}
                     ],
                     value="single",
-                    inline=True
+                    inline=True,
+                    style={
+                        "display": "flex",
+                        "gap": "10px",  # distance between the buttons
+                        "alignItems": "center",
+                        "padding": "5px"
+                    } 
                 ),
                 html.Div(id="depot-table", className="mt-4")
             ], className="custom-tab", selected_className="custom-tab--selected"),
 
-            dcc.Tab(label="📊 Dividenden", children=[
+            dcc.Tab(label="💸 Dividends", children=[
                 html.Div([
-                    html.H5("📅 Jahre auswählen:", className="mb-2"),
+                    html.H5("📅 Show allocated dividends of: ", className="mb-2"),
                     dcc.Checklist(
                         id="year-selector",
                         inline=True,
                         labelStyle={"marginRight": "10px"},
                         style={"marginBottom": "20px"}
                     ),
-                    dcc.Graph(id="dividenden-chart"),
-                    html.Div(id="dividenden-summary", className="mt-4"),
-                    html.Button("Tabelle ein-/ausblenden", id="toggle-table-btn"),
-                    html.Div(id="dividenden-table-container", style={"display": "none"}),  # Tabelle standardmäßig ausgeblendet
+                    dcc.Graph(id="dividend-chart"),
+                    html.Div(id="dividend-summary", className="mt-4"),
+                    html.Button("Show Details", id="toggle-table-btn"),
+                    html.Div(id="dividend-table-container", style={"display": "none"}),  # not shown by default
                 ])
             ]),
 
