@@ -4,9 +4,9 @@ from backend.api.mock_helper import MockHelper
 import os
 
 class BaseBankAPI(ABC):
-    def __init__(self, name: str, account_id: str):
+    def __init__(self, name: str):
         self.name = name
-        self.account_id = account_id
+        self.account_id = None
         self.use_mock = os.getenv("USE_MOCK", "false").lower() == "true"
         self.use_generated_mock_data = os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
         self.mock = MockHelper(depot_name=name)

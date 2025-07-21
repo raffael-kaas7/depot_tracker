@@ -35,7 +35,7 @@ DEPOT_2_NAME = os.getenv("DEPOT_2_NAME")
 # hard init two comdirect depots (uncomment if only one needed, setup in .env)
 
 # init api and authenticate
-api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=DEPOT_1_NAME, account_id=os.getenv("ACCOUNT_ID_1"), session_id="comdirect-active-depot", request_id="000001")
+api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=DEPOT_1_NAME, session_id="comdirect-active-depot", request_id="000001")
 api_cd_1.authenticate()
 
 # update offline data
@@ -44,7 +44,7 @@ api_cd_1.save_mock_statements()
 api_cd_1.save_mock_depot_id()
 
 # init api and authenticate
-api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=DEPOT_2_NAME, account_id=os.getenv("ACCOUNT_ID_2"), session_id="comdirect-dividend-depot", request_id="000002")
+api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=DEPOT_2_NAME, session_id="comdirect-dividend-depot", request_id="000002")
 api_cd_2.authenticate()
 
 # update offline data
@@ -86,7 +86,7 @@ def render_depot_table(table_mode):
         df["purchase_value"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce").round(0)
         df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
         df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
-        df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 0)
+        df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 2)
 
         total_current_value = df["current_value"].sum()
 
@@ -123,7 +123,7 @@ def render_depot_table(table_mode):
                 "textAlign": "center",
                 "padding": "10px",
                 "fontFamily": "Arial, sans-serif",
-                "fontSize": "14px",
+                "fontSize": "18px",
                 "minWidth": "120px",  
                 "maxWidth": "120px", 
                 "width": "120px",  
@@ -280,7 +280,7 @@ def show_dividend_chart(selected_years):
     df = df[df["year"].isin(selected_years)]
 
     monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
-    month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     monthly["month_name"] = pd.Categorical(monthly["month_name"], categories=month_order, ordered=True)
     monthly = monthly.sort_values(["year", "month"])

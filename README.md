@@ -42,16 +42,20 @@ CLIENT_ID=
 CLIENT_SECRET=
 
 # Portfolio 1
+DEPOT_2_NAME= # name used in frontend to identify the depot
 USERNAME_1=
 PASSWORD_1=
-ACCOUNT_ID_1=  # Retrieve via API: /banking/clients/user/v1/accounts/balances
 
 # Portfolio 2
+DEPOT_2_NAME= # name used in frontend to identify the depot
 USERNAME_2=
 PASSWORD_2=
-ACCOUNT_ID_2=  # Retrieve via API: /banking/clients/user/v1/accounts/balances
 
-USE_MOCK=false  # true = use mock data for development
+# currently limited to two depots (only comdirect)
+
+# Mock
+USE_MOCK=false # use "old" depot data (automatically stored in normal mode) to avoid authentication for development purposes
+USE_GENERATED_MOCK_DATA=false # dummy data for showcasing the app without personal depot data (no depot insights)
 ```
 
 ### 5. Fill data/wkn_name_cache.json 

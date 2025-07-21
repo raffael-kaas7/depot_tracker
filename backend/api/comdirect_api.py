@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 load_dotenv() # private data setup from .env file 
 
 class ComdirectAPI(BaseBankAPI):
-    def __init__(self, username, pw, depot_name, account_id, session_id, request_id):
-        super().__init__(name=depot_name, account_id=account_id)
+    def __init__(self, username, pw, depot_name, session_id, request_id):
+        super().__init__(name=depot_name)
 
         self.base_url = "https://api.comdirect.de"
         self.oauth_url = f"{self.base_url}/oauth/token"
@@ -89,6 +89,9 @@ class ComdirectAPI(BaseBankAPI):
 
 
     def get_statements(self):
+        # collect the account id connected to the depot (Girokonto or Verrechnungskonto)
+        self.account_id = self._collect_account_id()
+
         transactions = []
 
         # TODO: this currently does not work to retrieve full two year statements. 
@@ -117,13 +120,43 @@ class ComdirectAPI(BaseBankAPI):
             transactions = r.json().get("values", [])
 
         if self.use_mock:
-            # 🔁 Wenn Mock-Modus aktiv: Lade lokal gespeicherte Datei
             transactions = self.mock.load_mock_statements()
 
         return self._sanitize_numbers(transactions)
         
     def get_depot_id(self): 
         return self.depot_id
+
+    def _collect_account_id(self):
+        transactions = []
+        account_id = None
+        
+        if not self.use_mock:
+
+            url = f"{self.base_url}/api/banking/clients/user/v1/accounts/balances"
+            headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.final_token}",
+                "x-http-request-info": json.dumps({
+                    "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
+                })
+            }
+
+            r = requests.get(url, headers=headers)
+            r.raise_for_status()
+
+            account_ids = r.json().get("values", []) # includes e.g. credit card, Tagesgeld, ...
+            
+            # check which one is connected to depot (Griokonto or Verrechnungskonto)
+            for account in account_ids:
+                account_type = account['account']['accountType']['text']
+                if account_type in ['Girokonto', 'Verrechnungskonto']:
+                    account_id = account['account']['accountId']
+                    print(account_id)
+                
+        return account_id
+
 
     def _collect_initial_token(self):
         
