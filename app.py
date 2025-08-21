@@ -11,6 +11,8 @@ import pandas as pd
 import plotly.express as px
 import yaml
 
+import dash_bootstrap_components as dbc
+
 import locale
 
 from dotenv import load_dotenv
@@ -36,40 +38,53 @@ DEPOT_2_NAME = os.getenv("DEPOT_2_NAME")
 
 # init api and authenticate
 api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=DEPOT_1_NAME, session_id="comdirect-active-depot", request_id="000001")
-api_cd_1.authenticate()
-
-# update offline data
-api_cd_1.save_mock_positions(normalize=False)
-api_cd_1.save_mock_statements()
-api_cd_1.save_mock_depot_id()
 
 # init api and authenticate
 api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=DEPOT_2_NAME, session_id="comdirect-dividend-depot", request_id="000002")
-api_cd_2.authenticate()
-
-# update offline data
-api_cd_2.save_mock_positions(normalize=False)
-api_cd_2.save_mock_statements()
-api_cd_2.save_mock_depot_id()
 
 # data manager object to handle data base
-data_cd_1 = DataManager(backend="yaml")
-data_cd_2 = DataManager(backend="yaml")
+data_cd_1 = DataManager(depot_name=api_cd_1.get_name())
+data_cd_2 = DataManager(depot_name=api_cd_2.get_name())
 
 # use service object to analyze depot data 
-service_cd_1 = DepotService(api_cd_1, data_cd_1)
-service_cd_2 = DepotService(api_cd_2, data_cd_2)
+service_cd_1 = DepotService(data_cd_1)
+service_cd_2 = DepotService(data_cd_2)
 
-service_cd_1.extract_dividends_from_statements()
-service_cd_2.extract_dividends_from_statements()
-
+# TODO: remove and use service_cd_1.get_dividends() and service_cd_2.get_dividends() instead
 dividends_file = ""
-if os.getenv("USE_MOCK", "false").lower() == "true" and os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true":
+if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true":
     dividends_file = "./mock/generated_mock_data/dividends_mock.yaml"
 else:
     dividends_file = "data/dividends.yaml"
 
 app.layout = create_layout()
+
+@app.callback(
+    Output("auth-status", "children"),
+    Input("auth-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def authenticate_user(n_clicks):
+    """
+    Trigger authentication for both APIs when the button is clicked.
+
+    Parameters:
+        n_clicks (int): Number of times the button has been clicked.
+
+    Returns:
+        str: Status message indicating success or failure.
+    """
+    try:
+        # authenticate and update local data
+        api_cd_1.authenticate()
+        api_cd_2.authenticate()
+        data_cd_1.update_data()
+        data_cd_2.update_data()
+
+        return dbc.Alert("Authentication successful!", color="success", className="mt-3")
+    except Exception as e:
+        return dbc.Alert(f"Authentication failed: {str(e)}", color="danger", className="mt-3")
+
 
 @app.callback(
     Output("depot-table", "children"),
@@ -78,8 +93,11 @@ app.layout = create_layout()
 def render_depot_table(table_mode):
     
     def process_depot(positions, title, summary=True):
+        if not positions:
+            return html.Div([html.H4(title), html.P("No positions available.")])
+        
         df = pd.json_normalize(positions)
-
+        
         df["wkn"] = df["wkn"]
         df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce").round(2)
         df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce").round(2)
@@ -191,8 +209,8 @@ def render_depot_table(table_mode):
         ])
 
     # Fetch positions from both depots
-    pos1 = service_cd_1.fetch_positions()
-    pos2 = service_cd_2.fetch_positions()
+    pos1 = service_cd_1.get_positions()
+    pos2 = service_cd_2.get_positions()
     all_pos = pos1 + pos2
 
     total_pos1 = service_cd_1.compute_summary()
@@ -220,8 +238,11 @@ def render_depot_table(table_mode):
     Input("asset-piechart", "id")
 )
 def render_pie_charts(_):
-    df1 = service_cd_1.get_asset_pie_data(service_cd_1.fetch_positions())
-    df2 = service_cd_2.get_asset_pie_data(service_cd_2.fetch_positions())
+    df1 = service_cd_1.get_asset_pie_data(service_cd_1.get_positions())
+    df2 = service_cd_2.get_asset_pie_data(service_cd_2.get_positions())
+
+    if df1.empty and df2.empty:
+        return html.Div("No data available for asset allocation.")
 
     pie1 = dcc.Graph(
         figure={

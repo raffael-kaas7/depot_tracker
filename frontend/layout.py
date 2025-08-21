@@ -42,7 +42,10 @@ def create_layout():
         html.H1("🔥 Comdirect - Depot Tracker 🔥", className="text-center text-primary my-4", style={
             "fontFamily": "Inter, sans-serif"
         }),
-
+        html.Div([
+            dbc.Button("Authenticate", id="auth-button", color="primary", className="mb-4"),
+            html.Div(id="auth-status", className="text-muted")
+        ], className="text-center"),
         dcc.Tabs([
             dcc.Tab(label="📈 Assets", children=[
                 dcc.RadioItems(

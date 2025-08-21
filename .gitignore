@@ -5,6 +5,9 @@ secrets/*
 !mock/generated_mock_data/*
 mock/*
 .vscode/*
-data/dividends.yaml
+data/dividends*.yaml
+data/*/positions.json
+data/*/statements.json
+data/*/depot_id.json
 data/wkn_name_cache.json
 todo.txt

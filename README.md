@@ -54,7 +54,6 @@ PASSWORD_2=
 # currently limited to two depots (only comdirect)
 
 # Mock
-USE_MOCK=false # use "old" depot data (automatically stored in normal mode) to avoid authentication for development purposes
 USE_GENERATED_MOCK_DATA=false # dummy data for showcasing the app without personal depot data (no depot insights)
 ```
 

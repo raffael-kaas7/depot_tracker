@@ -12,7 +12,7 @@ load_dotenv() # private data setup from .env file
 
 class ComdirectAPI(BaseBankAPI):
     def __init__(self, username, pw, depot_name, session_id, request_id):
-        super().__init__(name=depot_name)
+        super().__init__(depot_name=depot_name)
 
         self.base_url = "https://api.comdirect.de"
         self.oauth_url = f"{self.base_url}/oauth/token"
@@ -31,9 +31,8 @@ class ComdirectAPI(BaseBankAPI):
 
     def authenticate(self):
 
-        if self.use_mock:
-            print(f"{self.name}: [{self.session_id}]: Authentifizierung übersprungen (MOCK)")
-            self.depot_id = self.mock.load_mock_depot_id()
+        if self.use_generated_mock_data:
+            return
         else: 
             # 1. get initial token
             self._collect_initial_token()
@@ -64,96 +63,91 @@ class ComdirectAPI(BaseBankAPI):
                     
             # set depot it
             self._retrieve_depot_id()
+            
+            # update local data
+            self._save_positions()
+            self._save_statements()
+            self._save_depot_id()
 
-    def get_positions(self):
+    def _get_positions(self):
         positions_list =[]
-        
-        if self.use_mock:
-            positions_list = self.mock.load_mock_positions()
 
-        else:
-            url = f"{self.base_url}/api/brokerage/v3/depots/{self.depot_id}/positions"
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.final_token}",
-                "x-http-request-info": json.dumps({
-                    "clientRequestId": {"sessionId": self.session_id, "requestId": self.request_id}
-                })
-            }
-            r = requests.get(url, headers=headers)
-            r.raise_for_status()
-            positions_list = r.json()["values"]
+        url = f"{self.base_url}/api/brokerage/v3/depots/{self.depot_id}/positions"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.final_token}",
+            "x-http-request-info": json.dumps({
+                "clientRequestId": {"sessionId": self.session_id, "requestId": self.request_id}
+            })
+        }
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+        positions_list = r.json()["values"]
         
         return self._sanitize_numbers(positions_list)
 
 
-    def get_statements(self):
+    def _get_statements(self):
         # collect the account id connected to the depot (Girokonto or Verrechnungskonto)
         self.account_id = self._collect_account_id()
 
         transactions = []
 
         # TODO: this currently does not work to retrieve full two year statements. 
-        if not self.use_mock:
-            # get statements from last two years
-            from_date = datetime.today() - timedelta(days=2 * 365)
-            to_date = datetime.today()
+        # get statements from last two years
+        from_date = datetime.today() - timedelta(days=2 * 365)
+        to_date = datetime.today()
 
-            url = f"{self.base_url}/api/banking/v1/accounts/{self.account_id}/transactions"
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.final_token}",
-                "x-http-request-info": json.dumps({
-                    "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
-                })
-            }
-            params = {
-                "fromDate": from_date.strftime("%Y-%m-%d"),
-                "toDate": to_date.strftime("%Y-%m-%d")
-            }
+        url = f"{self.base_url}/api/banking/v1/accounts/{self.account_id}/transactions"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.final_token}",
+            "x-http-request-info": json.dumps({
+                "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
+            })
+        }
+        params = {
+            "fromDate": from_date.strftime("%Y-%m-%d"),
+            "toDate": to_date.strftime("%Y-%m-%d")
+        }
 
-            r = requests.get(url, headers=headers, params=params)
-            r.raise_for_status()
+        r = requests.get(url, headers=headers, params=params)
+        r.raise_for_status()
 
-            transactions = r.json().get("values", [])
-
-        if self.use_mock:
-            transactions = self.mock.load_mock_statements()
+        transactions = r.json().get("values", [])
 
         return self._sanitize_numbers(transactions)
         
-    def get_depot_id(self): 
+    def _get_depot_id(self): 
         return self.depot_id
 
     def _collect_account_id(self):
         transactions = []
         account_id = None
+    
+        url = f"{self.base_url}/api/banking/clients/user/v1/accounts/balances"
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.final_token}",
+            "x-http-request-info": json.dumps({
+                "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
+            })
+        }
+
+        r = requests.get(url, headers=headers)
+        r.raise_for_status()
+
+        account_ids = r.json().get("values", []) # includes e.g. credit card, Tagesgeld, ...
         
-        if not self.use_mock:
-
-            url = f"{self.base_url}/api/banking/clients/user/v1/accounts/balances"
-            headers = {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.final_token}",
-                "x-http-request-info": json.dumps({
-                    "clientRequestId": {"sessionId": self.session_id, "requestId": "txn-1"}
-                })
-            }
-
-            r = requests.get(url, headers=headers)
-            r.raise_for_status()
-
-            account_ids = r.json().get("values", []) # includes e.g. credit card, Tagesgeld, ...
-            
-            # check which one is connected to depot (Griokonto or Verrechnungskonto)
-            for account in account_ids:
-                account_type = account['account']['accountType']['text']
-                if account_type in ['Girokonto', 'Verrechnungskonto']:
-                    account_id = account['account']['accountId']
-                    print(account_id)
+        # check which one is connected to depot (Griokonto or Verrechnungskonto)
+        for account in account_ids:
+            account_type = account['account']['accountType']['text']
+            if account_type in ['Girokonto', 'Verrechnungskonto']:
+                account_id = account['account']['accountId']
+                print(account_id)
                 
         return account_id
 
