@@ -4,10 +4,9 @@ from frontend.layout import create_layout, create_summary_row
 from backend.api.comdirect_api import ComdirectAPI
 from backend.data.data_manager import DataManager
 from backend.logic.depot_service import DepotService
-from backend.logic.yfinance_support import wkn_to_name, wkn_to_name_lookup
+from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup
 
 import os
-from dotenv import load_dotenv
 import pandas as pd
 import plotly.express as px
 import yaml
@@ -15,6 +14,7 @@ import yaml
 import locale
 
 from dotenv import load_dotenv
+load_dotenv()
 
 # Set locale for formatting (German style: decimal as comma, thousands as point)
 locale.setlocale(locale.LC_ALL, 'de_DE.UTF-8')
@@ -333,8 +333,9 @@ def init_year_selector(_):
     )
 def update_dividenden_table(n_clicks):
     print("Update dividends table")
-    # Tabelle ein-/ausblenden
-    if n_clicks % 2 == 0:
+    # display table / hide table
+    clicks = n_clicks or 0 # avoid n_clicks being None on first load
+    if clicks % 2 == 0:
         return {"display": "none"}, None
 
     with open(dividends_file, "r") as f:

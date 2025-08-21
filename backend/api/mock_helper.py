@@ -7,10 +7,10 @@ class MockHelper:
         self.depot_name = depot_name
         self.use_generated_mock_data = os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
         if self.use_generated_mock_data: 
-            self.mock_folder = os.path.join("mock", "generated_mock_data/", depot_name)  
+            self.data_folder = os.path.join("mock", "generated_mock_data/", depot_name)  
         else:
-            self.mock_folder = os.path.join("mock", self.depot_name)
-        os.makedirs(self.mock_folder, exist_ok=True)
+            self.data_folder = os.path.join("data", self.depot_name)
+        os.makedirs(self.data_folder, exist_ok=True)
 
     def normalize_positions(self, positions: list, init_value=50000):
         """ normalize purchase Value to init_value"""
@@ -34,13 +34,13 @@ class MockHelper:
         return positions
 
     def _write_mock(self, filename: str, data: Union[dict, list]):
-        path = os.path.join(self.mock_folder, filename)
+        path = os.path.join(self.data_folder, filename)
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
         print(f"💾 Mock-Datei gespeichert: {path}")
 
     def _read_mock(self, filename: str) -> Union[dict, list]:
-        path = os.path.join(self.mock_folder, filename)
+        path = os.path.join(self.data_folder, filename)
         with open(path, "r") as f:
             print(f"📂 Mock-Datei geladen: {path}")
             return json.load(f)

@@ -1,6 +1,6 @@
 from backend.api.base_bank import BaseBankAPI
 from backend.data.data_manager import DataManager
-from backend.logic.yfinance_support import wkn_to_name, wkn_to_name_lookup
+from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup
 
 import yaml
 import os
