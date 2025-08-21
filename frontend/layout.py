@@ -82,9 +82,9 @@ def create_layout():
                 ])
             ]),
 
-            dcc.Tab(label="🥧 Asset Allocation", children=[
-                html.Div(id="asset-piechart", className="mt-4")
-            ], className="custom-tab", selected_className="custom-tab--selected"),
+            # dcc.Tab(label="🥧 Asset Allocation", children=[
+            #     html.Div(id="asset-piechart", className="mt-4")
+            # ], className="custom-tab", selected_className="custom-tab--selected"),
 
         ], className="mb-4", parent_className="custom-tabs"),
     ], fluid=True, className="p-4")

@@ -7,3 +7,4 @@ dash-bootstrap-components
 pyyaml
 yfinance
 apscheduler
+numpy

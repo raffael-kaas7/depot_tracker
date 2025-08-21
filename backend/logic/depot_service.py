@@ -52,6 +52,7 @@ class DepotService:
         return positions
    
     def compute_summary(self) -> dict:
+        self.data.get_positions()
         total_value = self.positions["current_value"].sum()
         total_cost = self.positions["purchase_value"].sum()
 

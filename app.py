@@ -12,8 +12,13 @@ import plotly.express as px
 import yaml
 import atexit
 import dash_bootstrap_components as dbc
-
+import numpy as np
+import json
 import locale
+
+import datetime as dt
+from zoneinfo import ZoneInfo
+import tempfile
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -50,6 +55,9 @@ data_cd_2 = DataManager(depot_name=api_cd_2.get_name())
 service_cd_1 = DepotService(data_cd_1)
 service_cd_2 = DepotService(data_cd_2)
 
+SNAPSHOT_FILE = "data/snapshot.json"
+BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
 # TODO: remove and use service_cd_1.get_dividends() and service_cd_2.get_dividends() instead
 dividends_file = ""
 if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true":
@@ -63,17 +71,87 @@ app.layout = create_layout()
 scheduler = BackgroundScheduler()
 scheduler_started = False  # Guard, damit er nur einmal startet
 
+def save_daily_snapshot():
+    """
+    Schreibt genau EINEN Snapshot pro Kalendertag (Europe/Berlin) nach data/snapshot.json.
+    Format: - date: YYYY-MM-DD; current_value: float; invested_capital: float
+    """
+    today = dt.datetime.now(BERLIN_TZ).date().isoformat()
+    
+    total_pos1 = service_cd_1.compute_summary()
+    total_pos2 = service_cd_2.compute_summary()
+
+    total_cost = total_pos1["total_cost"] + total_pos2["total_cost"]
+    total_value = total_pos1["total_value"] + total_pos2["total_value"]
+
+    snap = {
+        "date": today,
+        "current_value": round(total_value, 2),
+        "invested_capital": round(total_cost, 2),
+    }
+
+    # Check if the file exists
+    if not os.path.exists(SNAPSHOT_FILE):
+        
+        # Create an empty file with default content (empty list or dict)
+        with open(SNAPSHOT_FILE, "w") as f:
+            json.dump([], f)  # Default to an empty list
+        print(f"📂 Datei erstellt: {SNAPSHOT_FILE}")
+    
+    # write snap / if date already exists, update it
+    try:
+        with open(SNAPSHOT_FILE, "r") as f:
+            snapshots = json.load(f)
+
+        # Check if today's snapshot already exists
+        existing_snapshot = next((s for s in snapshots if s["date"] == today), None)
+        if existing_snapshot:
+            # Update existing snapshot
+            existing_snapshot["current_value"] = round(total_value, 2)
+            existing_snapshot["invested_capital"] = round(total_cost, 2)
+        else:
+            # Append new snapshot
+            snapshots.append(snap)
+
+        # Write updated snapshots back to file
+        with open(SNAPSHOT_FILE, "w") as f:
+            json.dump(snapshots, f, indent=4)
+
+        print(f"📂 Snapshot saved/updated: {SNAPSHOT_FILE}")
+
+    except Exception as e:
+        print(f"❌ Error saving snapshot: {e}")
+            
+
 def start_scheduler_once():
     global scheduler_started
     if scheduler_started:
         return
     # Jobs definieren (dein Intervall: hier 1 Minute)
-    scheduler.add_job(func=data_cd_1.update_prices, trigger="interval", minutes=1, id="prices1", max_instances=1, coalesce=True)
-    scheduler.add_job(func=data_cd_2.update_prices, trigger="interval", minutes=1, id="prices2", max_instances=1, coalesce=True)
+    scheduler.add_job(func=data_cd_1.update_prices, trigger="interval", minutes=0.1, id="prices1", max_instances=1, coalesce=True)
+    scheduler.add_job(func=data_cd_2.update_prices, trigger="interval", minutes=0.1, id="prices2", max_instances=1, coalesce=True)
+    scheduler.add_job(func=save_daily_snapshot, trigger="interval", minutes=0.1, id="snapshot", max_instances=1, coalesce=True)
     scheduler.start()
     atexit.register(lambda: scheduler.shutdown(wait=False))
     scheduler_started = True
     print("✅ Scheduler gestartet")
+
+
+def momentum_display(x: float) -> str:
+    if x is None or pd.isna(x):
+        return "—"
+    # Schwellen: 3% ~ neutral, darüber Auf/Ab
+    if x >= 0.10:
+        arrow = "▲"
+    elif x >= 0.03:
+        arrow = "↗"
+    elif x <= -0.10:
+        arrow = "▼"
+    elif x <= -0.03:
+        arrow = "↘"
+    else:
+        arrow = "→"
+    return f"{arrow} {x*100:.1f}%"
 
 @app.callback(
     Output("auth-status", "children"),
@@ -115,6 +193,12 @@ def render_depot_table(table_mode):
         total_value = positions["current_value"].sum()
         performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
 
+        # Momentum processing
+        if "momentum_3m" not in positions.columns:
+            positions["momentum_3m"] = np.nan  # sorgt dafür, dass Filter/Styles nicht crashen
+
+        positions["momentum_3m_disp"] = positions["momentum_3m"].map(momentum_display)
+
         # Main table
         main_table = dash_table.DataTable(
             columns=[
@@ -127,6 +211,7 @@ def render_depot_table(table_mode):
                 {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
                 {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
                 {"name": "Allocation (%)", "id": "percentage_in_depot", "type": "numeric"},
+                {"name": "3-M-Momentum", "id": "momentum_3m_disp", "type": "numeric"},
             ],
             data=positions.to_dict("records"),
             sort_action="native",  # Enables sorting
@@ -153,29 +238,49 @@ def render_depot_table(table_mode):
                 "border": "1px solid #ddd",
             },
             style_data_conditional=[
-                {
-                    "if": {"row_index": "odd"},
-                    "backgroundColor": "#f9f9f9",
+                {"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"},
+                {"if": {"row_index": "even"}, "backgroundColor": "#ffffff"},
+
+                # Performance-Farben
+                {"if": {"column_id": "performance_%", "filter_query": "{performance_%} < 0"},
+                "color": "red", "fontWeight": "bold"},
+                {"if": {"column_id": "performance_%", "filter_query": "{performance_%} >= 0"},
+                "color": "green", "fontWeight": "bold"},
+
+                # >>> Momentum-Färbung (basierend auf der ROH-Spalte momentum_3m) <<<
+                # Stark aufwärts (>= +10%)
+                {"if": {"column_id": "momentum_3m_disp",
+                        "filter_query": "{momentum_3m} >= 0.10"},
+                        #"backgroundColor": "#e6f4ea", 
+                        "color": "#137333", "fontWeight": "bold"
                 },
-                {
-                    "if": {"row_index": "even"},
-                    "backgroundColor": "#ffffff",
+
+                # Mäßig aufwärts (+3% bis < +10%)
+                {"if": {"column_id": "momentum_3m_disp",
+                        "filter_query": "{momentum_3m} >= 0.03 && {momentum_3m} < 0.10"},
+                        #"backgroundColor": "#f1f8e9", 
+                        "color": "#1e8e3e"
                 },
-                {
-                    "if": {
-                        "column_id": "performance_%",
-                        "filter_query": "{performance_%} < 0", 
-                    },
-                    "color": "red",
-                    "fontWeight": "bold",
+
+                # Seitwärts (−3% bis +3%)
+                {"if": {"column_id": "momentum_3m_disp",
+                        "filter_query": "{momentum_3m} > -0.03 && {momentum_3m} < 0.03"},
+                        #"backgroundColor": "#f6f6f6", 
+                        "color": "#5f6368"
                 },
-                {
-                    "if": {
-                        "column_id": "performance_%",  # Nur die Performance-Spalte
-                        "filter_query": "{performance_%} >= 0",  # Positive Werte
-                    },
-                    "color": "green",
-                    "fontWeight": "bold",
+
+                # Mäßig abwärts (−10% < … ≤ −3%)
+                {"if": {"column_id": "momentum_3m_disp",
+                        "filter_query": "{momentum_3m} <= -0.03 && {momentum_3m} > -0.10"},
+                        #"backgroundColor": "#fdecea", 
+                        "color": "#d93025"
+                },
+
+                # Stark abwärts (≤ −10%)
+                {"if": {"column_id": "momentum_3m_disp",
+                        "filter_query": "{momentum_3m} <= -0.10"},
+                        #"backgroundColor": "#fce8e6", 
+                        "color": "#b31412", "fontWeight": "bold"
                 },
             ],
         )
@@ -214,10 +319,13 @@ def render_depot_table(table_mode):
     total_cost = total_pos1["total_cost"] + total_pos2["total_cost"]
     total_value = total_pos1["total_value"] + total_pos2["total_value"]
 
+    capital_gain = total_value - total_cost
+
     relative_diff = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
 
     summary_div = create_summary_row([
         {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
+        {"icon": "💲", "label": "Capital Gain", "value": f"{capital_gain:,.0f} €", "color": "success" if relative_diff > 0 else "danger"},
         {"icon": "📈", "label": "Performance", "value": f"{relative_diff:.1f} %", "color": "success" if relative_diff > 0 else "danger"},
         {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_cost:,.0f} €", "color": "secondary"},
     ])
