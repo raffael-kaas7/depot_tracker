@@ -9,9 +9,12 @@ import pandas as pd
 class DepotService:
     def __init__(self, data_manager: DataManager):
         self.data = data_manager
+        self.get_positions()
 
     def get_positions(self):
-        return self.data.get_positions()
+        self.data.get_positions()
+        self.positions = self._process_positions(self.data.get_positions())
+        return self.positions
 
     def get_dividends(self):
         return self.data.get_dividends()
@@ -40,10 +43,17 @@ class DepotService:
     def parse_dividends(self, statements):
         pass
 
+    def _process_positions(self, positions):
+        # add new columns
+        positions["performance_%"] = round(((positions["current_value"] - positions["purchase_value"]) / positions["purchase_value"]) * 100, 2)
+        total_current_value = positions["current_value"].sum()
+        positions["percentage_in_depot"] = round((positions["current_value"] / total_current_value) * 100, 2)
+
+        return positions
+   
     def compute_summary(self) -> dict:
-        positions = self.get_positions()
-        total_value = sum(float(p["currentValue"]["value"]) for p in positions)
-        total_cost = sum(float(p["purchaseValue"]["value"]) for p in positions)
+        total_value = self.positions["current_value"].sum()
+        total_cost = self.positions["purchase_value"].sum()
 
         performance = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
 

@@ -6,3 +6,4 @@ python-dotenv
 dash-bootstrap-components
 pyyaml
 yfinance
+apscheduler

@@ -3,6 +3,9 @@ from typing import Union
 import yaml
 import re
 import json
+from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup, update_prices_from_yf
+import pandas as pd
+
 
 class DataManager:
     def __init__(self, depot_name: str):
@@ -21,6 +24,15 @@ class DataManager:
     def get_positions(self):
         return self.positions
     
+    def update_prices(self):
+        self.positions = update_prices_from_yf(self.positions)
+        self.positions["current_value"] = self.positions["count"] * self.positions["current_price"]
+        
+        self.positions["current_price"] = round(self.positions["current_price"], 2)
+        self.positions["current_value"] = round(self.positions["current_value"], 0)
+        
+        print("🔄 Prices updated from Yahoo Finance.")
+
     def get_dividends(self):
         return self._extract_dividends_from_statements()
 
@@ -50,7 +62,21 @@ class DataManager:
             return json.load(f)
     
     def _load_positions(self):
-        return self._read_data("positions.json")
+        df = pd.json_normalize(self._read_data("positions.json"))
+
+        df["wkn"] = df["wkn"]
+        df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce").round(2)
+        df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce").round(2)
+        df["purchase_value"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce").round(0)
+        df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
+        df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
+        
+        # get name from wkn via yfinance
+        df["name"] = df["wkn"].apply(wkn_to_name_lookup)
+
+        # store as a pandas datafield
+        return df
+        
 
     def _load_statements(self):
         return self._read_data("statements.json")

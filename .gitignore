@@ -10,4 +10,5 @@ data/*/positions.json
 data/*/statements.json
 data/*/depot_id.json
 data/wkn_name_cache.json
+data/wkn_ticker_cache.json
 todo.txt

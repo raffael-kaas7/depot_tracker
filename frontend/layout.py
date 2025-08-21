@@ -51,10 +51,10 @@ def create_layout():
                 dcc.RadioItems(
                     id="table-switch",
                     options=[
-                        {"label": "Separated Depots", "value": "single"},
-                        {"label": "Combined", "value": "combined"}
+                        {"label": "Combined", "value": "combined"},
+                        {"label": "Separated Depots", "value": "single"}
                     ],
-                    value="single",
+                    value="combined",
                     inline=True,
                     style={
                         "display": "flex",

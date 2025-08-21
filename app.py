@@ -5,12 +5,12 @@ from backend.api.comdirect_api import ComdirectAPI
 from backend.data.data_manager import DataManager
 from backend.logic.depot_service import DepotService
 from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup
-
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import pandas as pd
 import plotly.express as px
 import yaml
-
+import atexit
 import dash_bootstrap_components as dbc
 
 import locale
@@ -59,6 +59,22 @@ else:
 
 app.layout = create_layout()
 
+
+scheduler = BackgroundScheduler()
+scheduler_started = False  # Guard, damit er nur einmal startet
+
+def start_scheduler_once():
+    global scheduler_started
+    if scheduler_started:
+        return
+    # Jobs definieren (dein Intervall: hier 1 Minute)
+    scheduler.add_job(func=data_cd_1.update_prices, trigger="interval", minutes=1, id="prices1", max_instances=1, coalesce=True)
+    scheduler.add_job(func=data_cd_2.update_prices, trigger="interval", minutes=1, id="prices2", max_instances=1, coalesce=True)
+    scheduler.start()
+    atexit.register(lambda: scheduler.shutdown(wait=False))
+    scheduler_started = True
+    print("✅ Scheduler gestartet")
+
 @app.callback(
     Output("auth-status", "children"),
     Input("auth-button", "n_clicks"),
@@ -93,29 +109,10 @@ def authenticate_user(n_clicks):
 def render_depot_table(table_mode):
     
     def process_depot(positions, title, summary=True):
-        if not positions:
-            return html.Div([html.H4(title), html.P("No positions available.")])
         
-        df = pd.json_normalize(positions)
-        
-        df["wkn"] = df["wkn"]
-        df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce").round(2)
-        df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce").round(2)
-        df["purchase_value"] = pd.to_numeric(df["purchaseValue.value"], errors="coerce").round(0)
-        df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
-        df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
-        df["performance_%"] = round(((df["current_value"] - df["purchase_value"]) / df["purchase_value"]) * 100, 2)
-
-        total_current_value = df["current_value"].sum()
-
-        df["percentage_in_depot"] = round((df["current_value"] / total_current_value) * 100, 2)
-
-        # get name from wkn via yfinance
-        df["name"] = df["wkn"].apply(wkn_to_name_lookup)
-
         # sum
-        total_purchase_value = df["purchase_value"].sum()
-        total_value = df["current_value"].sum()
+        total_purchase_value = positions["purchase_value"].sum()
+        total_value = positions["current_value"].sum()
         performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
 
         # Main table
@@ -131,7 +128,7 @@ def render_depot_table(table_mode):
                 {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
                 {"name": "Allocation (%)", "id": "percentage_in_depot", "type": "numeric"},
             ],
-            data=df.to_dict("records"),
+            data=positions.to_dict("records"),
             sort_action="native",  # Enables sorting
             sort_by=[
                 {"column_id": "percentage_in_depot", "direction": "desc"}
@@ -186,13 +183,6 @@ def render_depot_table(table_mode):
         if summary is False:
             return html.Div([html.H4(title), main_table])
 
-        # # Summary
-        # summary_div = html.Div([
-        # html.H4("Summary", className="mt-4 mb-3"),
-        # html.P(f"Current Value: {total_value:.0f} €"),
-        # html.P(f"Performance: {performance:.0f} %"),
-        # html.P(f"Purchase Value: {total_purchase_value:.0f} €")
-        # ])
 
         summary_div = create_summary_row([
             {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
@@ -207,11 +197,16 @@ def render_depot_table(table_mode):
             main_table,
             html.Br(),
         ])
-
+        
     # Fetch positions from both depots
     pos1 = service_cd_1.get_positions()
     pos2 = service_cd_2.get_positions()
-    all_pos = pos1 + pos2
+    
+    all_pos = pd.concat([pos1, pos2], ignore_index=True)
+    # update allocation
+    total_current_value = all_pos["current_value"].sum()
+    all_pos["percentage_in_depot"] = round((all_pos["current_value"] / total_current_value) * 100, 2)
+
 
     total_pos1 = service_cd_1.compute_summary()
     total_pos2 = service_cd_2.compute_summary()
@@ -385,4 +380,5 @@ def update_dividenden_table(n_clicks):
     return {"display": "block"}, table
 
 if __name__ == "__main__":
+    start_scheduler_once()
     app.run(debug=False)
