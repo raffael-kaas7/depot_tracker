@@ -39,15 +39,24 @@ def create_layout():
         dbc.Container: The main container layout
     """
     return dbc.Container([
-        html.H1("🔥 Comdirect - Depot Tracker 🔥", className="text-center text-primary my-4", style={
+        html.H1("Comdirect - Depot Tracker", className="text-center text-primary my-4", style={
             "fontFamily": "Inter, sans-serif"
         }),
-        html.Div([
-            dbc.Button("Authenticate", id="auth-button", color="primary", className="mb-4"),
-            html.Div(id="auth-status", className="text-muted")
-        ], className="text-center"),
         dcc.Tabs([
             dcc.Tab(label="📈 Assets", children=[
+            html.Div([
+                dbc.Button("Sync Depot 1", id="auth-button-cd1", color="primary", className="mb-4"),
+                dbc.Button("Sync Depot 2", id="auth-button-cd2", color="primary", className="mb-4"),
+                html.Div(id="auth-status-cd1", className="text-muted"),
+                html.Div(id="auth-status-cd2", className="text-muted")
+            ], className="mb-4 g-3",
+               style={
+                        "display": "flex",
+                        "gap": "10px",  # distance between the buttons
+                        "alignItems": "center",
+                        "padding": "5px"
+                     } 
+                ),
                 dcc.RadioItems(
                     id="table-switch",
                     options=[

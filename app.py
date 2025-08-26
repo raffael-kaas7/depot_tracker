@@ -152,8 +152,8 @@ def momentum_display(x: float) -> str:
     return f"{arrow} {x*100:.1f}%"
 
 @app.callback(
-    Output("auth-status", "children"),
-    Input("auth-button", "n_clicks"),
+    Output("auth-status-cd1", "children"),
+    Input("auth-button-cd1", "n_clicks"),
     prevent_initial_call=True
 )
 def authenticate_user(n_clicks):
@@ -169,14 +169,35 @@ def authenticate_user(n_clicks):
     try:
         # authenticate and update local data
         api_cd_1.authenticate()
-        api_cd_2.authenticate()
         data_cd_1.update_data()
-        data_cd_2.update_data()
 
         return dbc.Alert("Authentication successful!", color="success", className="mt-3")
     except Exception as e:
         return dbc.Alert(f"Authentication failed: {str(e)}", color="danger", className="mt-3")
 
+@app.callback(
+    Output("auth-status-cd2", "children"),
+    Input("auth-button-cd2", "n_clicks"),
+    prevent_initial_call=True
+)
+def authenticate_user(n_clicks):
+    """
+    Trigger authentication for both APIs when the button is clicked.
+
+    Parameters:
+        n_clicks (int): Number of times the button has been clicked.
+
+    Returns:
+        str: Status message indicating success or failure.
+    """
+    try:
+        # authenticate and update local data
+        api_cd_2.authenticate()
+        data_cd_2.update_data()
+
+        return dbc.Alert("Authentication successful!", color="success", className="mt-3")
+    except Exception as e:
+        return dbc.Alert(f"Authentication failed: {str(e)}", color="danger", className="mt-3")
 
 @app.callback(
     Output("depot-table", "children"),
