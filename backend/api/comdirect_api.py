@@ -7,6 +7,7 @@ import csv
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import time
 
 load_dotenv() # private data setup from .env file 
 
@@ -43,7 +44,7 @@ class ComdirectAPI(BaseBankAPI):
             # 3. call for tan authentication (Photo Push Tan)
             challenge = self._raise_challenge_to_validate_tan(session_data)
             print("🔐 Activate photo TAN")
-            input("↵ Press Enter after activating the TAN: ...")
+            time.sleep(10) # sleep 10 seconds to allow user to confirm photo tan on mobile app
             
             # tan = input() # if we want to give a TAN number and not using photo tan
 

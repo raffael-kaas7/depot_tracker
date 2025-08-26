@@ -117,8 +117,6 @@ def save_daily_snapshot():
         with open(SNAPSHOT_FILE, "w") as f:
             json.dump(snapshots, f, indent=4)
 
-        print(f"📂 Snapshot saved/updated: {SNAPSHOT_FILE}")
-
     except Exception as e:
         print(f"❌ Error saving snapshot: {e}")
             
@@ -191,6 +189,7 @@ def render_depot_table(table_mode):
         # sum
         total_purchase_value = positions["purchase_value"].sum()
         total_value = positions["current_value"].sum()
+        capital_gain = total_value - total_purchase_value
         performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
 
         # Momentum processing
@@ -202,7 +201,7 @@ def render_depot_table(table_mode):
         # Main table
         main_table = dash_table.DataTable(
             columns=[
-                {"name": "WKN", "id": "wkn", "type": "text"},
+                #{"name": "WKN", "id": "wkn", "type": "text"},
                 {"name": "Name", "id": "name", "type": "text"},
                 {"name": "Count", "id": "count", "type": "numeric"},
                 {"name": "Purchase Price (€)", "id": "purchase_price", "type": "numeric"},
@@ -211,6 +210,7 @@ def render_depot_table(table_mode):
                 {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
                 {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
                 {"name": "Allocation (%)", "id": "percentage_in_depot", "type": "numeric"},
+                {"name": "Total Dividends (€)", "id": "total_dividends", "type": "numeric"},
                 {"name": "3-M-Momentum", "id": "momentum_3m_disp", "type": "numeric"},
             ],
             data=positions.to_dict("records"),
@@ -291,6 +291,7 @@ def render_depot_table(table_mode):
 
         summary_div = create_summary_row([
             {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
+            {"icon": "💲", "label": "Capital Gain", "value": f"{capital_gain:,.0f} €", "color": "success" if performance > 0 else "danger"},
             {"icon": "📈", "label": "Performance", "value": f"{performance:.1f} %", "color": "success" if performance > 0 else "danger"},
             {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_purchase_value:,.0f} €", "color": "secondary"},
         ])
@@ -385,6 +386,9 @@ def render_pie_charts(_):
     Input("year-selector", "value")
 )
 def show_dividend_chart(selected_years):    
+    service_cd_1.get_dividends()
+    service_cd_2.get_dividends()
+    
     with open(dividends_file, "r") as f:
         dividends = yaml.safe_load(f) or []
 
@@ -403,11 +407,27 @@ def show_dividend_chart(selected_years):
 
     df = df[df["year"].isin(selected_years)]
 
-    monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
     month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+    # add also months without received dividends (0 €)
+    all_months = pd.DataFrame(
+        [(year, month, month_name) for year in selected_years for month, month_name in enumerate(month_order, start=1)],
+        columns=["year", "month", "month_name"]
+    )
+
+    monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
+    monthly = pd.merge(all_months, monthly, on=["year", "month", "month_name"], how="left")
+
+    # Fill missing amounts with 0
+    monthly["amount"] = monthly["amount"].fillna(0)
+    
+    
     monthly["month_name"] = pd.Categorical(monthly["month_name"], categories=month_order, ordered=True)
-    monthly = monthly.sort_values(["year", "month"])
+    monthly = monthly.sort_values(["month", "year"])
+
+    # Convert "year" to string to ensure categorical legend instead of the heatmap (continuous color scale)
+    monthly["year"] = monthly["year"].astype(str)
 
     fig = px.bar(
         monthly,
@@ -466,7 +486,8 @@ def update_dividenden_table(n_clicks):
         dividends = yaml.safe_load(f) or []
 
     df = pd.DataFrame(dividends)
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"], format='%Y-%m-%d')
+    #df["date"] = df["date"].dt.date
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["month_name"] = df["date"].dt.strftime("%b")
@@ -481,8 +502,11 @@ def update_dividenden_table(n_clicks):
         ],
         data=df.to_dict("records"),
         sort_action="native",  # Enables sorting
+        sort_by=[
+            {"column_id": "date", "direction": "desc"}
+        ],
         style_table={"overflowX": "auto"},
-        page_size=50
+        page_size=10
     )
 
     return {"display": "block"}, table
