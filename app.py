@@ -1,124 +1,150 @@
-from dash import Dash, Output, Input, dcc, html, dash_table
+# app.py (fixed)
+from dash import Dash, Output, Input, dcc, html, dash_table, callback_context
+import dash_bootstrap_components as dbc
+import os, json, yaml, locale, numpy as np
+import pandas as pd
+import plotly.express as px
+import datetime as dt
+from zoneinfo import ZoneInfo
+
+from apscheduler.schedulers.background import BackgroundScheduler
+import tempfile
+import atexit
 
 from frontend.layout import create_layout, create_summary_row
 from backend.api.comdirect_api import ComdirectAPI
 from backend.data.data_manager import DataManager
 from backend.logic.depot_service import DepotService
 from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup
-from apscheduler.schedulers.background import BackgroundScheduler
-import os
-import pandas as pd
-import plotly.express as px
-import yaml
-import atexit
-import dash_bootstrap_components as dbc
-import numpy as np
-import json
-import locale
 
-import datetime as dt
-from zoneinfo import ZoneInfo
-import tempfile
+
 
 from dotenv import load_dotenv
 load_dotenv()
 
-# Set locale for formatting (German style: decimal as comma, thousands as point)
-locale.setlocale(locale.LC_ALL, 'de_DE.UTF-8')
+# German formatting if available
+try:
+    locale.setlocale(locale.LC_ALL, 'de_DE.UTF-8')
+except Exception:
+    pass
 
 app = Dash(
     __name__,
     external_stylesheets=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css",
-        "https://fonts.googleapis.com/css2?family=Inter&display=swap"
-    ]
+        "https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/darkly/bootstrap.min.css",
+        "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap",
+    ],
+    suppress_callback_exceptions=True,
 )
-
 server = app.server
 
 DEPOT_1_NAME = os.getenv("DEPOT_1_NAME")
 DEPOT_2_NAME = os.getenv("DEPOT_2_NAME")
 
-# hard init two comdirect depots (uncomment if only one needed, setup in .env)
+api_cd_1 = ComdirectAPI(
+    username=os.getenv("USERNAME_1"),
+    pw=os.getenv("PASSWORD_1"),
+    depot_name=DEPOT_1_NAME,
+    session_id="comdirect-active-depot",
+    request_id="000001",
+)
+api_cd_2 = ComdirectAPI(
+    username=os.getenv("USERNAME_2"),
+    pw=os.getenv("PASSWORD_2"),
+    depot_name=DEPOT_2_NAME,
+    session_id="comdirect-dividend-depot",
+    request_id="000002",
+)
 
-# init api and authenticate
-api_cd_1 = ComdirectAPI(username=os.getenv("USERNAME_1"), pw=os.getenv("PASSWORD_1"), depot_name=DEPOT_1_NAME, session_id="comdirect-active-depot", request_id="000001")
-
-# init api and authenticate
-api_cd_2 = ComdirectAPI(username=os.getenv("USERNAME_2"), pw=os.getenv("PASSWORD_2"), depot_name=DEPOT_2_NAME, session_id="comdirect-dividend-depot", request_id="000002")
-
-# data manager object to handle data base
 data_cd_1 = DataManager(depot_name=api_cd_1.get_name())
 data_cd_2 = DataManager(depot_name=api_cd_2.get_name())
 
-# use service object to analyze depot data 
 service_cd_1 = DepotService(data_cd_1)
 service_cd_2 = DepotService(data_cd_2)
 
 SNAPSHOT_FILE = "data/snapshot.json"
 BERLIN_TZ = ZoneInfo("Europe/Berlin")
 
-# TODO: remove and use service_cd_1.get_dividends() and service_cd_2.get_dividends() instead
-dividends_file = ""
-if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true":
-    dividends_file = "./mock/generated_mock_data/dividends_mock.yaml"
-else:
-    dividends_file = "data/dividends.yaml"
+# Pick your dividends file
+dividends_file = (
+    "./mock/generated_mock_data/dividends_mock.yaml"
+    if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
+    else "data/dividends.yaml"
+)
 
 app.layout = create_layout()
-
 
 scheduler = BackgroundScheduler()
 scheduler_started = False  # Guard, damit er nur einmal startet
 
 def save_daily_snapshot():
     """
-    Schreibt genau EINEN Snapshot pro Kalendertag (Europe/Berlin) nach data/snapshot.json.
+    Writes exactly ONE snapshot per calendar day (Europe/Berlin) for each depot into separate files:
+    - data/DEPOT_1_NAME/snapshot.json
+    - data/DEPOT_2_NAME/snapshot.json
     Format: - date: YYYY-MM-DD; current_value: float; invested_capital: float
     """
     today = dt.datetime.now(BERLIN_TZ).date().isoformat()
-    
+
+    # Compute summaries for both depots
     total_pos1 = service_cd_1.compute_summary()
     total_pos2 = service_cd_2.compute_summary()
 
-    total_cost = total_pos1["total_cost"] + total_pos2["total_cost"]
-    total_value = total_pos1["total_value"] + total_pos2["total_value"]
-
-    snap = {
-        "date": today,
-        "current_value": round(total_value, 2),
-        "invested_capital": round(total_cost, 2),
+    # Prepare snapshots for each depot
+    depot_snapshots = {
+        f"{DEPOT_1_NAME}": {
+            "path": os.path.join("data", f"{DEPOT_1_NAME}", "snapshot.json"),
+            "data": {
+                "date": today,
+                "current_value": round(total_pos1["total_value"], 2),
+                "invested_capital": round(total_pos1["total_cost"], 2),
+            },
+        },
+        "f{DEPOT_2_NAME}": {
+            "path": os.path.join("data", f"{DEPOT_2_NAME}", "snapshot.json"),
+            "data": {
+                "date": today,
+                "current_value": round(total_pos2["total_value"], 2),
+                "invested_capital": round(total_pos2["total_cost"], 2),
+            },
+        },
     }
 
-    # Check if the file exists
-    if not os.path.exists(SNAPSHOT_FILE):
-        
-        # Create an empty file with default content (empty list or dict)
-        with open(SNAPSHOT_FILE, "w") as f:
-            json.dump([], f)  # Default to an empty list
-        print(f"📂 Datei erstellt: {SNAPSHOT_FILE}")
-    
-    # write snap / if date already exists, update it
-    try:
-        with open(SNAPSHOT_FILE, "r") as f:
-            snapshots = json.load(f)
+    for depot_name, snapshot_info in depot_snapshots.items():
+        snapshot_file = snapshot_info["path"]
+        snap = snapshot_info["data"]
 
-        # Check if today's snapshot already exists
-        existing_snapshot = next((s for s in snapshots if s["date"] == today), None)
-        if existing_snapshot:
-            # Update existing snapshot
-            existing_snapshot["current_value"] = round(total_value, 2)
-            existing_snapshot["invested_capital"] = round(total_cost, 2)
-        else:
-            # Append new snapshot
-            snapshots.append(snap)
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(snapshot_file), exist_ok=True)
 
-        # Write updated snapshots back to file
-        with open(SNAPSHOT_FILE, "w") as f:
-            json.dump(snapshots, f, indent=4)
+        # Check if the file exists
+        if not os.path.exists(snapshot_file):
+            # Create an empty file with default content (empty list)
+            with open(snapshot_file, "w") as f:
+                json.dump([], f)  # Default to an empty list
+            print(f"📂 Datei erstellt: {snapshot_file}")
 
-    except Exception as e:
-        print(f"❌ Error saving snapshot: {e}")
+        # Write or update the snapshot
+        try:
+            with open(snapshot_file, "r") as f:
+                snapshots = json.load(f)
+
+            # Check if today's snapshot already exists
+            existing_snapshot = next((s for s in snapshots if s["date"] == today), None)
+            if existing_snapshot:
+                # Update existing snapshot
+                existing_snapshot["current_value"] = snap["current_value"]
+                existing_snapshot["invested_capital"] = snap["invested_capital"]
+            else:
+                # Append new snapshot
+                snapshots.append(snap)
+
+            # Write updated snapshots back to file
+            with open(snapshot_file, "w") as f:
+                json.dump(snapshots, f, indent=4)
+
+        except Exception as e:
+            print(f"❌ Error saving snapshot for {depot_name}: {e}")
             
 
 def start_scheduler_once():
@@ -134,403 +160,255 @@ def start_scheduler_once():
     scheduler_started = True
     print("✅ Scheduler gestartet")
 
+# ---------------------------
+# Sidebar section switching
+# ---------------------------
+@app.callback(
+    Output("assets-section", "style"),
+    Output("dividends-section", "style"),
+    Output("nav-assets", "active"),
+    Output("nav-dividends", "active"),
+    Input("nav-assets", "n_clicks"),
+    Input("nav-dividends", "n_clicks"),
+)
+def switch_sections(n_assets, n_divs):
+    # default to assets on initial load
+    ctx = callback_context
+    which = "assets"
+    if ctx.triggered:
+        which = "assets" if ctx.triggered[0]["prop_id"].startswith("nav-assets") else "dividends"
+    if which == "assets":
+        return {"display": "block"}, {"display": "none"}, True, False
+    return {"display": "none"}, {"display": "block"}, False, True
 
-def momentum_display(x: float) -> str:
-    if x is None or pd.isna(x):
-        return "—"
-    # Schwellen: 3% ~ neutral, darüber Auf/Ab
-    if x >= 0.10:
-        arrow = "▲"
-    elif x >= 0.03:
-        arrow = "↗"
-    elif x <= -0.10:
-        arrow = "▼"
-    elif x <= -0.03:
-        arrow = "↘"
-    else:
-        arrow = "→"
-    return f"{arrow} {x*100:.1f}%"
-
+# ---------------------------
+# Sync buttons (separate fns)
+# ---------------------------
 @app.callback(
     Output("auth-status-cd1", "children"),
     Input("auth-button-cd1", "n_clicks"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
-def authenticate_user(n_clicks):
-    """
-    Trigger authentication for both APIs when the button is clicked.
-
-    Parameters:
-        n_clicks (int): Number of times the button has been clicked.
-
-    Returns:
-        str: Status message indicating success or failure.
-    """
+def sync_depot_1(n_clicks):
     try:
-        # authenticate and update local data
+        # Adapt to your API methods as needed
         api_cd_1.authenticate()
         data_cd_1.update_data()
-
-        return dbc.Alert("Authentication successful!", color="success", className="mt-3")
+        return dbc.Alert("Depot 1: Authentication & sync successful.", color="success", className="mt-2 py-2")
     except Exception as e:
-        return dbc.Alert(f"Authentication failed: {str(e)}", color="danger", className="mt-3")
+        return dbc.Alert(f"Depot 1: Authentication failed — {e}", color="danger", className="mt-2 py-2")
 
 @app.callback(
     Output("auth-status-cd2", "children"),
     Input("auth-button-cd2", "n_clicks"),
-    prevent_initial_call=True
+    prevent_initial_call=True,
 )
-def authenticate_user(n_clicks):
-    """
-    Trigger authentication for both APIs when the button is clicked.
-
-    Parameters:
-        n_clicks (int): Number of times the button has been clicked.
-
-    Returns:
-        str: Status message indicating success or failure.
-    """
+def sync_depot_2(n_clicks):
     try:
-        # authenticate and update local data
         api_cd_2.authenticate()
         data_cd_2.update_data()
-
-        return dbc.Alert("Authentication successful!", color="success", className="mt-3")
+        return dbc.Alert("Depot 2: Authentication & sync successful.", color="success", className="mt-2 py-2")
     except Exception as e:
-        return dbc.Alert(f"Authentication failed: {str(e)}", color="danger", className="mt-3")
+        return dbc.Alert(f"Depot 2: Authentication failed — {e}", color="danger", className="mt-2 py-2")
+
+# ---------------------------
+# Assets: positions table(s)
+# ---------------------------
+def momentum_display(x: float) -> str:
+    if x is None or pd.isna(x): return "—"
+    if x >= 0.10: arrow = "▲"
+    elif x >= 0.03: arrow = "↗"
+    elif x <= -0.10: arrow = "▼"
+    elif x <= -0.03: arrow = "↘"
+    else: arrow = "→"
+    return f"{arrow}"
+    #return f"{arrow} {x*100:.1f}%"
+
+def process_depot(positions: pd.DataFrame, title: str, summary=True):
+    if positions is None or positions.empty:
+        return html.Div([html.H4(title), dbc.Alert("No positions to display.", color="secondary")])
+
+    # totals
+    total_purchase_value = positions["purchase_value"].sum()
+    total_value = positions["current_value"].sum()
+    capital_gain = total_value - total_purchase_value
+    performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
+
+    # momentum
+    if "momentum_3m" not in positions.columns:
+        positions["momentum_3m"] = np.nan
+    positions["momentum_3m_disp"] = positions["momentum_3m"].map(momentum_display)
+
+    # render table
+    show_cols = [
+        ("name","Name"), ("count","Count"),
+        ("purchase_price","Purchase Price (€)"), ("current_price","Current Price (€)"),
+        ("purchase_value","Purchase Value (€)"), ("current_value","Current Value (€)"),
+        ("performance_%","Performance (%)"), ("percentage_in_depot","Allocation (%)"),
+        ("total_dividends","Total Dividends (€)"), ("momentum_3m_disp","3-M-Momentum")
+    ]
+    cols = [c for c,_ in show_cols if c in positions.columns]
+    table = dash_table.DataTable(
+        columns=[{"name": n, "id": c} for c,n in show_cols if c in positions.columns],
+        data=positions[cols].to_dict("records"),
+        sort_action="native",
+        sort_by=[{"column_id": "percentage_in_depot", "direction": "desc"}] if "percentage_in_depot" in cols else [],
+        style_table={"overflowX": "auto", "borderRadius": "5px"},
+        style_data_conditional=[
+            {"if": {"column_id": "performance_%", "filter_query": "{performance_%} < 0"}, "color": "#ff6b6b"},
+            {"if": {"column_id": "performance_%", "filter_query": "{performance_%} >= 0"}, "color": "#1dd1a1"},
+            {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} >= 0.10"}, "color": "#1dd1a1"},
+            {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} >= 0.03 && {momentum_3m} < 0.10"}, "color": "#10ac84"},
+            {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} > -0.03 && {momentum_3m} < 0.03"}, "color": "#c8d6e5"},
+            {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} <= -0.03 && {momentum_3m} > -0.10"}, "color": "#ff9f43"},
+            {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} <= -0.10"}, "color": "#ff6b6b"},
+        ],
+        #page_size=50,
+    )
+
+    if not summary:
+        return html.Div([html.H4(title), table])
+
+    summary_div = create_summary_row([
+        {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "light"},
+        {"icon": "💲", "label": "Capital Gain", "value": f"{capital_gain:,.0f} €", "color": "#1dd1a1" if performance > 0 else "#ff6b6b"},
+        {"icon": "📈", "label": "Performance", "value": f"{performance:.1f} %", "color": "#1dd1a1" if performance > 0 else "#ff6b6b"},
+        {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_purchase_value:,.0f} €", "color": "light"},
+    ])
+
+    return html.Div([html.H4(title), summary_div, table, html.Br()])
 
 @app.callback(
     Output("depot-table", "children"),
-    Input("table-switch", "value")
+    Input("table-switch", "value"),
 )
 def render_depot_table(table_mode):
-    
-    def process_depot(positions, title, summary=True):
-        
-        # sum
-        total_purchase_value = positions["purchase_value"].sum()
-        total_value = positions["current_value"].sum()
-        capital_gain = total_value - total_purchase_value
-        performance = ((total_value - total_purchase_value) / total_purchase_value) * 100 if total_purchase_value else 0
+    try:
+        pos1 = service_cd_1.get_positions()
+    except Exception:
+        pos1 = pd.DataFrame()
+    try:
+        pos2 = service_cd_2.get_positions()
+    except Exception:
+        pos2 = pd.DataFrame()
 
-        # Momentum processing
-        if "momentum_3m" not in positions.columns:
-            positions["momentum_3m"] = np.nan  # sorgt dafür, dass Filter/Styles nicht crashen
+    if pos1 is None: pos1 = pd.DataFrame()
+    if pos2 is None: pos2 = pd.DataFrame()
 
-        positions["momentum_3m_disp"] = positions["momentum_3m"].map(momentum_display)
+    # allocation for combined
+    all_pos = pd.concat([pos1, pos2], ignore_index=True) if not pos1.empty or not pos2.empty else pd.DataFrame()
+    if not all_pos.empty and "current_value" in all_pos.columns:
+        total_current_value = all_pos["current_value"].sum()
+        if total_current_value:
+            all_pos["percentage_in_depot"] = (all_pos["current_value"] / total_current_value * 100).round(2)
 
-        # Main table
-        main_table = dash_table.DataTable(
-            columns=[
-                #{"name": "WKN", "id": "wkn", "type": "text"},
-                {"name": "Name", "id": "name", "type": "text"},
-                {"name": "Count", "id": "count", "type": "numeric"},
-                {"name": "Purchase Price (€)", "id": "purchase_price", "type": "numeric"},
-                {"name": "Current Price (€)", "id": "current_price", "type": "numeric"},
-                {"name": "Purchase Value (€)", "id": "purchase_value", "type": "numeric"},
-                {"name": "Current Value (€)", "id": "current_value", "type": "numeric"},
-                {"name": "Performance (%)", "id": "performance_%", "type": "numeric"},
-                {"name": "Allocation (%)", "id": "percentage_in_depot", "type": "numeric"},
-                {"name": "Total Dividends (€)", "id": "total_dividends", "type": "numeric"},
-                {"name": "3-M-Momentum", "id": "momentum_3m_disp", "type": "numeric"},
-            ],
-            data=positions.to_dict("records"),
-            sort_action="native",  # Enables sorting
-            sort_by=[
-                {"column_id": "percentage_in_depot", "direction": "desc"}
-            ],
-            style_table={"overflowX": "auto", "borderRadius": "5px"},
-            style_cell={
-                "textAlign": "center",
-                "padding": "10px",
-                "fontFamily": "Arial, sans-serif",
-                "fontSize": "18px",
-                "minWidth": "120px",  
-                "maxWidth": "120px", 
-                "width": "120px",  
-            },
-            style_header={
-                "backgroundColor": "#007bff",
-                "color": "white",
-                "fontWeight": "bold",
-                "border": "1px solid #007bff",
-            },
-            style_data={
-                "border": "1px solid #ddd",
-            },
-            style_data_conditional=[
-                {"if": {"row_index": "odd"}, "backgroundColor": "#f9f9f9"},
-                {"if": {"row_index": "even"}, "backgroundColor": "#ffffff"},
-
-                # Performance-Farben
-                {"if": {"column_id": "performance_%", "filter_query": "{performance_%} < 0"},
-                "color": "red", "fontWeight": "bold"},
-                {"if": {"column_id": "performance_%", "filter_query": "{performance_%} >= 0"},
-                "color": "green", "fontWeight": "bold"},
-
-                # >>> Momentum-Färbung (basierend auf der ROH-Spalte momentum_3m) <<<
-                # Stark aufwärts (>= +10%)
-                {"if": {"column_id": "momentum_3m_disp",
-                        "filter_query": "{momentum_3m} >= 0.10"},
-                        #"backgroundColor": "#e6f4ea", 
-                        "color": "#137333", "fontWeight": "bold"
-                },
-
-                # Mäßig aufwärts (+3% bis < +10%)
-                {"if": {"column_id": "momentum_3m_disp",
-                        "filter_query": "{momentum_3m} >= 0.03 && {momentum_3m} < 0.10"},
-                        #"backgroundColor": "#f1f8e9", 
-                        "color": "#1e8e3e"
-                },
-
-                # Seitwärts (−3% bis +3%)
-                {"if": {"column_id": "momentum_3m_disp",
-                        "filter_query": "{momentum_3m} > -0.03 && {momentum_3m} < 0.03"},
-                        #"backgroundColor": "#f6f6f6", 
-                        "color": "#5f6368"
-                },
-
-                # Mäßig abwärts (−10% < … ≤ −3%)
-                {"if": {"column_id": "momentum_3m_disp",
-                        "filter_query": "{momentum_3m} <= -0.03 && {momentum_3m} > -0.10"},
-                        #"backgroundColor": "#fdecea", 
-                        "color": "#d93025"
-                },
-
-                # Stark abwärts (≤ −10%)
-                {"if": {"column_id": "momentum_3m_disp",
-                        "filter_query": "{momentum_3m} <= -0.10"},
-                        #"backgroundColor": "#fce8e6", 
-                        "color": "#b31412", "fontWeight": "bold"
-                },
-            ],
-        )
-
-        if summary is False:
-            return html.Div([html.H4(title), main_table])
-
-
-        summary_div = create_summary_row([
-            {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
-            {"icon": "💲", "label": "Capital Gain", "value": f"{capital_gain:,.0f} €", "color": "success" if performance > 0 else "danger"},
-            {"icon": "📈", "label": "Performance", "value": f"{performance:.1f} %", "color": "success" if performance > 0 else "danger"},
-            {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_purchase_value:,.0f} €", "color": "secondary"},
-        ])
-
-        # Combine both tables
+    if table_mode == True: # separated
         return html.Div([
-            html.H4(title),
-            summary_div,
-            main_table,
-            html.Br(),
+            process_depot(pos1, DEPOT_1_NAME or "Depot 1"),
+            process_depot(pos2, DEPOT_2_NAME or "Depot 2"),
         ])
-        
-    # Fetch positions from both depots
-    pos1 = service_cd_1.get_positions()
-    pos2 = service_cd_2.get_positions()
-    
-    all_pos = pd.concat([pos1, pos2], ignore_index=True)
-    # update allocation
-    total_current_value = all_pos["current_value"].sum()
-    all_pos["percentage_in_depot"] = round((all_pos["current_value"] / total_current_value) * 100, 2)
-
-
-    total_pos1 = service_cd_1.compute_summary()
-    total_pos2 = service_cd_2.compute_summary()
-
-    total_cost = total_pos1["total_cost"] + total_pos2["total_cost"]
-    total_value = total_pos1["total_value"] + total_pos2["total_value"]
-
-    capital_gain = total_value - total_cost
-
-    relative_diff = ((total_value - total_cost) / total_cost) * 100 if total_cost else 0
-
-    summary_div = create_summary_row([
-        {"icon": "💰", "label": "Current Value", "value": f"{total_value:,.0f} €", "color": "dark"},
-        {"icon": "💲", "label": "Capital Gain", "value": f"{capital_gain:,.0f} €", "color": "success" if relative_diff > 0 else "danger"},
-        {"icon": "📈", "label": "Performance", "value": f"{relative_diff:.1f} %", "color": "success" if relative_diff > 0 else "danger"},
-        {"icon": "🏷️", "label": "Invested Capital", "value": f"{total_cost:,.0f} €", "color": "secondary"},
-    ])
-    
-    if table_mode == "single":
-        return html.Div([process_depot(pos1, DEPOT_1_NAME), process_depot(pos2, DEPOT_2_NAME)])
     else:
-        return html.Div([summary_div, process_depot(all_pos, "All positions", summary=False)])
-        
+        return html.Div([
+            #summary_div,
+            process_depot(all_pos, f"{DEPOT_1_NAME} + {DEPOT_2_NAME}", summary=True)
+        ])
 
-@app.callback(
-    Output("asset-piechart", "children"),
-    Input("asset-piechart", "id")
-)
-def render_pie_charts(_):
-    df1 = service_cd_1.get_asset_pie_data(service_cd_1.get_positions())
-    df2 = service_cd_2.get_asset_pie_data(service_cd_2.get_positions())
-
-    if df1.empty and df2.empty:
-        return html.Div("No data available for asset allocation.")
-
-    pie1 = dcc.Graph(
-        figure={
-            "type": "pie",
-            "data": [{
-                "labels": df1["name"],
-                "values": df1["wert"],
-                "type": "pie",
-                "hole": 0.3,
-            }],
-            "layout": {"title": DEPOT_1_NAME}
-        }
-    )
-
-    pie2 = dcc.Graph(
-        figure={
-            "type": "pie",
-            "data": [{
-                "labels": df2["name"],
-                "values": df2["wert"],
-                "type": "pie",
-                "hole": 0.3,
-            }],
-            "layout": {"title": DEPOT_2_NAME}
-        }
-    )
-
-    return html.Div([
-        html.Div(pie1, className="col-md-6"),
-        html.Div(pie2, className="col-md-6"),
-    ], className="row")
-
-
+# ---------------------------
+# Dividends
+# ---------------------------
 @app.callback(
     Output("dividend-chart", "figure"),
     Output("dividend-summary", "children"),
-    Input("year-selector", "value")
+    Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
 )
-def show_dividend_chart(selected_years):    
-    service_cd_1.get_dividends()
-    service_cd_2.get_dividends()
-    
-    with open(dividends_file, "r") as f:
-        dividends = yaml.safe_load(f) or []
+def show_dividend_chart(_):
+    # Refresh (if your services write to dividends_file)
+    try:
+        service_cd_1.get_dividends()
+        service_cd_2.get_dividends()
+    except Exception:
+        pass
+
+    try:
+        with open(dividends_file, "r", encoding="utf-8") as f:
+            dividends = yaml.safe_load(f) or []
+    except Exception:
+        dividends = []
 
     df = pd.DataFrame(dividends)
-    df["date"] = pd.to_datetime(df["date"])
+    if df.empty:
+        fig = px.bar(pd.DataFrame({"month_name": [], "amount": [], "year": []}), x="month_name", y="amount", color="year")
+        return fig, html.Div("No dividend data yet.", className="text-muted")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["month_name"] = df["date"].dt.strftime("%b")
-    df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+    df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
 
     all_years = sorted(df["year"].unique())
 
-    # show all by default
-    if not selected_years:
-        selected_years = all_years
-
-    df = df[df["year"].isin(selected_years)]
-
-    month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-    # add also months without received dividends (0 €)
-    all_months = pd.DataFrame(
-        [(year, month, month_name) for year in selected_years for month, month_name in enumerate(month_order, start=1)],
-        columns=["year", "month", "month_name"]
-    )
-
+    month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    all_months = pd.DataFrame([(y, i, m) for y in all_years for i, m in enumerate(month_order, start=1)],
+                              columns=["year", "month", "month_name"])
     monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
     monthly = pd.merge(all_months, monthly, on=["year", "month", "month_name"], how="left")
-
-    # Fill missing amounts with 0
     monthly["amount"] = monthly["amount"].fillna(0)
-    
-    
-    monthly["month_name"] = pd.Categorical(monthly["month_name"], categories=month_order, ordered=True)
-    monthly = monthly.sort_values(["month", "year"])
-
-    # Convert "year" to string to ensure categorical legend instead of the heatmap (continuous color scale)
     monthly["year"] = monthly["year"].astype(str)
 
-    fig = px.bar(
-        monthly,
-        x="month_name",
-        y="amount",
-        color="year",
-        barmode="group",
-        title="",
-        labels={"amount": "Dividends in €", "month_name": "Month", "year": "Year"},
-        height=450,
-    )
+    fig = px.bar(monthly, x="month_name", y="amount", color="year", barmode="group",
+                 labels={"amount": "Dividends in €", "month_name": "Month", "year": "Year"},
+                 height=450)
+    fig.update_layout(paper_bgcolor="#0b1e25", plot_bgcolor="#0b1e25", font_color="#e5e5e5", font_size=14,
+                      margin=dict(l=20, r=20, t=40, b=20))
 
-    # --- Summary ---
     total = df["amount"].sum()
-    summary_per_year = df.groupby("year")["amount"].sum()
+    per_year = df.groupby("year")["amount"].sum()
 
-    summary = html.Ul([
-        html.Li(f"👑 All time Dividends: {total:.0f} €"),
-        *[html.Li(f"📅 {year}: {amount:.0f} €") for year, amount in summary_per_year.items()]
-    ])
-
+    summary = html.Div([
+        html.Div(f"👑 All time Dividends: {total:.0f} €", style={"margin-bottom": "10px"}),
+        *[
+            html.Div(
+                [
+                    html.Span(f"📅 {int(y)}: {amt:.0f} €", style={"margin-right": "30px"})
+                    for y, amt in per_year.items()][i:i+5]
+                ,
+                style={"margin-bottom": "5px"}
+            )
+            for i in range(0, len(per_year), 5)
+        ]
+    ], style={"text-align": "left", "list-style-type": "none", "padding": "0"})
     return fig, summary
 
+# RAW dividend table — ALWAYS visible (remove the old toggle callback to avoid duplicate outputs)
 @app.callback(
-    Output("year-selector", "options"),
-    Output("year-selector", "value"),
-    Input("year-selector", "id") 
-)
-def init_year_selector(_):
-    with open(dividends_file, "r") as f:
-        dividends = yaml.safe_load(f) or []
-
-    df = pd.DataFrame(dividends)
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df = df.dropna(subset=["date"])
-
-    years = sorted(df["date"].dt.year.unique())
-    options = [{"label": str(y), "value": y} for y in years]
-
-    print("📅 Verfügbare Jahre:", years)
-    return options, years
-
-@app.callback(
-    Output("dividend-table-container", "style"),
     Output("dividend-table-container", "children"),
-    Input("toggle-table-btn", "n_clicks")
-    )
-def update_dividenden_table(n_clicks):
-    print("Update dividends table")
-    # display table / hide table
-    clicks = n_clicks or 0 # avoid n_clicks being None on first load
-    if clicks % 2 == 0:
-        return {"display": "none"}, None
-
-    with open(dividends_file, "r") as f:
-        dividends = yaml.safe_load(f) or []
+    Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
+)
+def render_dividend_table(_):
+    try:
+        with open(dividends_file, "r", encoding="utf-8") as f:
+            dividends = yaml.safe_load(f) or []
+    except Exception:
+        dividends = []
 
     df = pd.DataFrame(dividends)
-    df["date"] = pd.to_datetime(df["date"], format='%Y-%m-%d')
-    #df["date"] = df["date"].dt.date
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.month
-    df["month_name"] = df["date"].dt.strftime("%b")
-    df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
-    df["company"] = df["company"]
+    if df.empty:
+        return dbc.Alert("No dividend data yet.", color="secondary")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"]).sort_values("date", ascending=False)
 
     table = dash_table.DataTable(
-        columns=[
-            {"name": "date", "id": "date"},
-            {"name": "company", "id": "company"},
-            {"name": "net amount", "id": "amount"}
-        ],
+        columns=[{"name":"Date","id":"date"},{"name":"Company","id":"company"},{"name":"Net amount (€)","id":"amount"}],
         data=df.to_dict("records"),
-        sort_action="native",  # Enables sorting
-        sort_by=[
-            {"column_id": "date", "direction": "desc"}
-        ],
-        style_table={"overflowX": "auto"},
-        page_size=10
+        style_table={"overflowX":"auto"},
+        #style_header={"backgroundColor":"#1e1e1e","color":"#fff","border":"0"},
+        #style_cell={"backgroundColor":"#121212","color":"#ddd","border":"0","padding":"10px"},
+        page_size=12, sort_action="native", filter_action="native",
     )
-
-    return {"display": "block"}, table
+    return table
 
 if __name__ == "__main__":
     start_scheduler_once()

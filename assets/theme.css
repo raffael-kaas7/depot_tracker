@@ -1,0 +1,181 @@
+/* assets/theme.css */
+
+/* ================================
+   THEME TOKENS (edit these only)
+   ================================ */
+   :root{
+    --brand-font:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    --font-size-base:17px;
+    --radius:16px;
+  
+    /* Palette (Dark) */
+    --bg:#23343a;
+    --text:#e7e9ea;
+    --muted:#e7e9ea;
+  
+    --surface-1:#0b1e25;
+    --surface-2:#0b1e25;
+  
+    /* Accents */
+    --primary:#fff500;
+    --primary-contrast:#0b1e25;
+  
+    --border:#0b1e25;
+
+    --success:#00bc8c;
+    --danger: #e74c3c;
+  
+    /* Tables / charts */
+    --table-header-bg:var(--surface-2);
+    --table-header-text:#ffffff;
+    --table-cell-bg:var(--surface-1);
+    --table-cell-text:var(--text);
+  
+    /* Graph backgrounds */
+    --plot-bg:var(--surface-1);
+    --paper-bg:var(--bg);
+  
+    /* Buttons */
+    --btn-font-weight:600;
+    --btn-padding-y:.55rem;
+    --btn-padding-x:1rem;
+  }
+
+  .text-success {
+    color: #28a745 !important; /* Green color for success */
+  }
+
+  .text-danger {
+    color: #dc3545 !important; /* Red color for danger */
+  }
+  /* ================================
+     GLOBAL OVERRIDESh
+     ================================ */
+  html,body{
+    background:var(--bg)!important;
+    color:var(--text)!important;
+    font-family:var(--brand-font)!important;
+    font-size:var(--font-size-base);
+  }
+  :root{
+    --bs-body-bg:var(--bg);
+    --bs-body-color:var(--text);
+    --bs-primary:var(--primary);
+    --bs-success:var(--success);
+    --bs-danger:var(--danger);
+    --bs-warning:var(--warning);
+    --bs-info:var(--info);
+    --bs-border-color:var(--border);
+  }
+  
+  /* ================================
+     COMPONENT OVERRIDES
+     ================================ */
+  .card{
+    background:var(--surface-1)!important;
+    border:1px solid var(--border)!important;
+    border-radius:var(--radius)!important;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+  .card .card-header{
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+  }
+  
+  /* Sidebar container */
+  .sidebar{
+    position:sticky; top:1rem;
+    background:var(--surface-1)!important;
+    border:1px solid var(--border)!important;
+    border-radius:var(--radius)!important;
+  }
+  
+  /* Nav pills */
+  .nav .nav-link{
+    color:var(--muted)!important;
+    background:transparent!important;
+    border-radius:999px!important;
+    border:1px solid transparent!important;
+  }
+  .nav .nav-link.active,
+  .nav .nav-link:focus,
+  .nav .nav-link:hover{
+    color:var(--primary-contrast)!important;
+    background:var(--primary)!important;
+    border-color:var(--primary)!important;
+  }
+  
+  /* Buttons */
+  .btn,.dbc-btn{
+    border-radius:var(--radius)!important;
+    font-weight:var(--btn-font-weight)!important;
+    padding:var(--btn-padding-y) var(--btn-padding-x)!important;
+  }
+  .btn-primary{
+    background:var(--primary)!important;
+    border-color:var(--primary)!important;
+    color:var(--primary-contrast)!important;
+  }
+  .btn-secondary{
+    background:var(--surface-1)!important;
+    border-color:var(--surface-1)!important;
+  }
+  
+  /* Headings & text helpers */
+  .h1-app {
+    font-size: 2rem;
+    letter-spacing: .2px;
+    font-weight: bold;
+    color: #0b1d25 !important; /* Black font color */
+    background-color: #fff500; /* Yellow background */
+    padding: 20px 40px; /* Add padding inside the rectangle */
+    border-radius: 10px; /* Optional: Rounded corners */
+    display: inline-block; /* Ensure the rectangle wraps tightly around the text */
+}
+  .text-muted-2{ color:var(--muted)!important; }
+  .text-gain{ color:var(--success)!important; font-weight:700; }
+  .text-loss{ color:var(--danger)!important; font-weight:700; }
+  
+  /* Layout helpers */
+  .bg-app{ background:var(--bg)!important; }
+  .section{ padding-inline:.5rem; }
+  .card-elevated{ box-shadow:0 16px 40px rgba(0,0,0,.24)!important; }
+  .pill{ border-radius:999px!important; }
+  .gap-2x{ gap:.75rem!important; }
+  
+  /* Dividers */
+  hr{ border-color:var(--border)!important; }
+  
+  /* ================================
+     DASH DATATABLE (dark + tokens)
+     ================================ */
+  .dash-table-container .dash-spreadsheet-container{
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .dash-table-container .dash-spreadsheet-inner{ background:var(--table-cell-bg); }
+  .dash-table-container .dash-spreadsheet-container th{
+    background:var(--table-header-bg)!important;
+    color:var(--table-header-text);
+    border:0!important;
+  }
+  .dash-table-container .dash-spreadsheet-container td{
+    background:var(--table-cell-bg)!important;
+    color:var(--table-cell-text);
+    border:0!important;
+    line-height: 2.0; /* Increase line height for better readability */
+  }
+  .dash-table-container .dash-cell.focused{
+    box-shadow:inset 0 0 0 1px var(--primary)!important;
+  }
+  .dash-spreadsheet tr:nth-child(odd) td{ background:color-mix(in oklab, var(--surface-1) 92%, white 8%)!important; }
+  .dash-spreadsheet tr:nth-child(even) td{ background:var(--surface-1)!important; }
+  
+  /* ================================
+     PLOTLY
+     ================================ */
+  .js-plotly-plot,.dash-graph,.dash-graph>div{
+    background:var(--paper-bg)!important;
+  }
+  

@@ -81,11 +81,11 @@ class DataManager:
             # Create an empty file with default content (empty list or dict)
             with open(path, "w") as f:
                 json.dump([], f)  # Default to an empty list
-            print(f"📂 Datei erstellt: {path}")
+            print(f"📂 Created persistent local data: {path}")
         
         # Read the file
         with open(path, "r") as f:
-            print(f"📂 Mock-Datei geladen: {path}")
+            print(f"📂 Read local data: {path}")
             return json.load(f)
     
     def _load_positions(self):
@@ -179,14 +179,13 @@ class DataManager:
             if key not in existing_set:
                 new_dividends.append(entry)
         
-        print(new_dividends)
-        # Speichern
+        # save
         all_divs = existing + new_dividends
         if new_dividends:
             with open(DIVIDEND_YAML_PATH, "w") as f:
                 yaml.dump(all_divs, f, sort_keys=False, allow_unicode=True)
-            print(f"💾 {len(new_dividends)} neue Dividenden gespeichert.")
+            print(f"💾 {len(new_dividends)} stored new dividends to persistent local data.")
         else:
-            print("✅ Keine neuen Dividenden gefunden.")
+            print("✅ No new dividends retrieved via Rest API.")
 
         return all_divs

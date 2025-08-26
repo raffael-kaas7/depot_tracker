@@ -1,5 +1,6 @@
 requests
 dash
+dash-daq
 flask
 pandas
 python-dotenv

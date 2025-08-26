@@ -37,12 +37,12 @@ class MockHelper:
         path = os.path.join(self.data_folder, filename)
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
-        print(f"💾 Mock-Datei gespeichert: {path}")
+        print(f"💾 Write mock data: {path}")
 
     def _read_mock(self, filename: str) -> Union[dict, list]:
         path = os.path.join(self.data_folder, filename)
         with open(path, "r") as f:
-            print(f"📂 Mock-Datei geladen: {path}")
+            print(f"📂 Read mock data: {path}")
             return json.load(f)
 
     def save_mock_positions(self, positions: list, normalize=True, target_value=50000):
