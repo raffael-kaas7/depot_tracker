@@ -1,4 +1,3 @@
-# app.py (fixed)
 from dash import Dash, Output, Input, dcc, html, dash_table, callback_context
 import dash_bootstrap_components as dbc
 import os, json, yaml, locale, numpy as np
@@ -28,6 +27,7 @@ try:
 except Exception:
     pass
 
+# bootstrap darkly theme
 app = Dash(
     __name__,
     external_stylesheets=[
@@ -38,6 +38,7 @@ app = Dash(
 )
 server = app.server
 
+# API client setup
 DEPOT_1_NAME = os.getenv("DEPOT_1_NAME")
 DEPOT_2_NAME = os.getenv("DEPOT_2_NAME")
 
@@ -56,16 +57,18 @@ api_cd_2 = ComdirectAPI(
     request_id="000002",
 )
 
+# Raw Data handling objects
 data_cd_1 = DataManager(depot_name=api_cd_1.get_name())
 data_cd_2 = DataManager(depot_name=api_cd_2.get_name())
 
+# Service object for specific KPIs
 service_cd_1 = DepotService(data_cd_1)
 service_cd_2 = DepotService(data_cd_2)
 
 SNAPSHOT_FILE = "data/snapshot.json"
 BERLIN_TZ = ZoneInfo("Europe/Berlin")
 
-# Pick your dividends file
+# Persistent dividends storage file (shared by all depots)
 dividends_file = (
     "./mock/generated_mock_data/dividends_mock.yaml"
     if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
@@ -75,11 +78,12 @@ dividends_file = (
 app.layout = create_layout()
 
 scheduler = BackgroundScheduler()
-scheduler_started = False  # Guard, damit er nur einmal startet
+scheduler_started = False  # To ensure scheduler starts only once
 
+# function called by scheduler
 def save_daily_snapshot():
     """
-    Writes exactly ONE snapshot per calendar day (Europe/Berlin) for each depot into separate files:
+    Writes exactly ONE snapshot per calendar day for each depot into separate files:
     - data/DEPOT_1_NAME/snapshot.json
     - data/DEPOT_2_NAME/snapshot.json
     Format: - date: YYYY-MM-DD; current_value: float; invested_capital: float
@@ -122,7 +126,7 @@ def save_daily_snapshot():
             # Create an empty file with default content (empty list)
             with open(snapshot_file, "w") as f:
                 json.dump([], f)  # Default to an empty list
-            print(f"📂 Datei erstellt: {snapshot_file}")
+            print(f"📂 Created new Snapshot file: {snapshot_file}")
 
         # Write or update the snapshot
         try:
@@ -146,7 +150,7 @@ def save_daily_snapshot():
         except Exception as e:
             print(f"❌ Error saving snapshot for {depot_name}: {e}")
             
-
+# start jobs running cyclically in parallel
 def start_scheduler_once():
     global scheduler_started
     if scheduler_started:
@@ -191,7 +195,7 @@ def switch_sections(n_assets, n_divs):
 )
 def sync_depot_1(n_clicks):
     try:
-        # Adapt to your API methods as needed
+        # authenticate and update data
         api_cd_1.authenticate()
         data_cd_1.update_data()
         return dbc.Alert("Depot 1: Authentication & sync successful.", color="success", className="mt-2 py-2")
@@ -205,15 +209,14 @@ def sync_depot_1(n_clicks):
 )
 def sync_depot_2(n_clicks):
     try:
+        # authenticate and update data
         api_cd_2.authenticate()
         data_cd_2.update_data()
         return dbc.Alert("Depot 2: Authentication & sync successful.", color="success", className="mt-2 py-2")
     except Exception as e:
         return dbc.Alert(f"Depot 2: Authentication failed — {e}", color="danger", className="mt-2 py-2")
 
-# ---------------------------
-# Assets: positions table(s)
-# ---------------------------
+# map momentum to arrows for easier visualization
 def momentum_display(x: float) -> str:
     if x is None or pd.isna(x): return "—"
     if x >= 0.10: arrow = "▲"
@@ -224,6 +227,7 @@ def momentum_display(x: float) -> str:
     return f"{arrow}"
     #return f"{arrow} {x*100:.1f}%"
 
+# process and render depot positions table with summary
 def process_depot(positions: pd.DataFrame, title: str, summary=True):
     if positions is None or positions.empty:
         return html.Div([html.H4(title), dbc.Alert("No positions to display.", color="secondary")])
@@ -278,6 +282,9 @@ def process_depot(positions: pd.DataFrame, title: str, summary=True):
 
     return html.Div([html.H4(title), summary_div, table, html.Br()])
 
+# ---------------------------
+# Assets: positions table(s)
+# ---------------------------
 @app.callback(
     Output("depot-table", "children"),
     Input("table-switch", "value"),

@@ -17,26 +17,30 @@ class DataManager:
         else:
             self.data_folder = os.path.join("data", self.name)
 
+        # load data from last Comdirect API synchronization
         self.statements = self._load_statements()
         self.depot_id = self._load_depot_id()
-
         self.positions = self._load_positions()
+        
+        # parse dividends from account statements and add total_dividends to positions DataFrame
         self.dividends = self._extract_dividends_from_statements()
         self._merge_dividends_into_positions()
     
     def get_positions(self):
         return self.positions
-    
+
+    def get_dividends(self):
+        return self.dividends
+
+    # update current prices from yfinance data and not via Comdirect API
     def update_prices(self):
         self.positions = update_prices_from_yf(self.positions)
         self.positions["current_value"] = self.positions["count"] * self.positions["current_price"]
         
         self.positions["current_price"] = round(self.positions["current_price"], 2)
         self.positions["current_value"] = round(self.positions["current_value"], 0)
-        
-    def get_dividends(self):
-        return self.dividends
 
+    # update full data based on retrieved data from Comdirect API
     def update_data(self): 
         self.statements = self._load_statements()
         self.depot_id = self._load_depot_id()
@@ -45,9 +49,14 @@ class DataManager:
         self.dividends = self._extract_dividends_from_statements()
         self._merge_dividends_into_positions()
 
+    # ---------------------------
+    # private methods
+    # ---------------------------
+    
+    # Merge total_dividends into positions DataFrame to show total dividends received by an asset in the portfolio table
     def _merge_dividends_into_positions(self):
         # Extract dividends
-        dividends = self._extract_dividends_from_statements()
+        dividends = self._extract_dividends_from_statements() # check for new dividends in account statements
         # Convert dividends to a DataFrame
         dividends_df = pd.DataFrame(dividends)
         # Ensure the wkn column is of type string in both DataFrames
@@ -137,22 +146,12 @@ class DataManager:
             date = txn.get("bookingDate")
             amount = float(txn["amount"]["value"])
 
-            # # 03 = Firmenname (evtl. mit Rechtsform), In march we need to use the second 03 ;-)
-            # companies = re.findall(r"03(.*?)(?=03|04|05|06|$)", info)
-            # if len(companies) > 1:
-            #     company_raw = companies[1]
-            # elif companies:
-            #     company_raw = companies[0]
-            # else:
-            #     company_raw = "Unbekannt"
-            # company = ' '.join(company_raw.split())  # Leerzeichen normalisieren
-            
             # WKN (04...)
             m_wkn = re.search(r"04([A-Z0-9]{5,6})", info.upper())
             wkn = m_wkn.group(1).strip() if m_wkn else None
             
             # Use wkn to get company name
-            company = wkn_to_name_lookup(wkn) if wkn else "Unbekannt"
+            company = wkn_to_name_lookup(wkn) if wkn else "Unknown"
 
             # Anzahl Stücke (02...)
             m_shares = re.search(r"02DEPOTBESTAND:\s*([\d,.]+)", info)

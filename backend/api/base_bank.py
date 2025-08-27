@@ -14,17 +14,25 @@ class BaseBankAPI(ABC):
             print(f"⚠️  Using GENERATED DATA for {self.name}")
             self.data_folder = os.path.join("mock", "generated_mock_data/", self.name)  
         else:
-            print(f"⚠️  Starting in OFFLINE-MODE for {self.name} (using last retrieved depot data)")
+            print(f"⚠️  Using REAL DATA for {self.name} (... last synchronized depot data)")
             self.data_folder = os.path.join("data", self.name)
 
     def get_name(self) -> str:
         """ e.g. 'comdirect' """
         return self.name
 
+    # ---------------------------
+    # abstract methods
+    # ---------------------------
     @abstractmethod
     def authenticate(self):
         """ bank api specific authentication procedure """
         pass
+
+
+    # ---------------------------
+    # private methods
+    # ---------------------------
 
     @abstractmethod
     def _get_positions(self):
@@ -35,7 +43,8 @@ class BaseBankAPI(ABC):
     def _get_statements(self):
         """ return bank statements (e.g. 3 years) """
         pass
-
+    
+    # helper to handle types in json data
     def _sanitize_numbers(self, obj):
         if isinstance(obj, dict):
             return {k: self._sanitize_numbers(v) for k, v in obj.items()}
@@ -53,7 +62,6 @@ class BaseBankAPI(ABC):
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
         print(f"💾 New data stored: {path}")
-
 
     def _save_positions(self, normalize=True, init_value=50000):
         if not self.use_generated_mock_data:

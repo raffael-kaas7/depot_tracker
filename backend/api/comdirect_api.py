@@ -30,6 +30,8 @@ class ComdirectAPI(BaseBankAPI):
         self.session_id = session_id
         self.request_id = request_id
 
+    # Comdirect specific authentication procedure
+    # override abstract methods from base class
     def authenticate(self):
 
         if self.use_generated_mock_data:
@@ -44,6 +46,8 @@ class ComdirectAPI(BaseBankAPI):
             # 3. call for tan authentication (Photo Push Tan)
             challenge = self._raise_challenge_to_validate_tan(session_data)
             print("🔐 Activate photo TAN")
+            
+            # TODO: ideally we would wait here until user confirms photo tan on mobile app (Check if there is an Endpoint for that)
             time.sleep(10) # sleep 10 seconds to allow user to confirm photo tan on mobile app
             
             # tan = input() # if we want to give a TAN number and not using photo tan
@@ -70,6 +74,7 @@ class ComdirectAPI(BaseBankAPI):
             self._save_statements()
             self._save_depot_id()
 
+    # override abstract methods from base class
     def _get_positions(self):
         positions_list =[]
 
@@ -88,9 +93,9 @@ class ComdirectAPI(BaseBankAPI):
         
         return self._sanitize_numbers(positions_list)
 
-
+    # override abstract methods from base class
     def _get_statements(self):
-        # collect the account id connected to the depot (Girokonto or Verrechnungskonto)
+        # collect the account id connected to the depot ('Girokonto' or 'Verrechnungskonto')
         self.account_id = self._collect_account_id()
 
         transactions = []

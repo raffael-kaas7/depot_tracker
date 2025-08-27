@@ -12,9 +12,9 @@ def wkn_to_name(wkn: str) -> str:
     try:
         ticker = yf.Ticker(wkn)
         info = ticker.info
-        return info.get("shortName") or info.get("longName") or "Unbekannt"
+        return info.get("shortName") or info.get("longName") or "Unknown"
     except Exception:
-        return "Unbekannt"
+        return "Unknown"
 
 
 def wkn_to_ticker_lookup(wkn: str) -> str:
@@ -31,9 +31,7 @@ def wkn_to_ticker_lookup(wkn: str) -> str:
     if wkn in cache:
         return cache[wkn]
 
-    # Workaround: User inputs it manually if needed
     print(f"🔍 WKN '{wkn}' not found, please add manually.")
-    # cache[wkn] = "Unknown"
 
     with open(WKN_TICKER_CACHE_PATH, "w") as f:
         json.dump(cache, f, indent=2)
@@ -47,16 +45,14 @@ def wkn_to_name_lookup(wkn: str) -> str:
     if os.path.exists(WKN_NAME_CACHE_PATH):
         with open(WKN_NAME_CACHE_PATH, "r") as f:
             raw = json.load(f)
-            cache = {str(k): v for k, v in raw.items()}  # ← alle Keys als str
+            cache = {str(k): v for k, v in raw.items()}  # ← all Keys as str
     else:
         cache = {}
 
     if wkn in cache:
         return cache[wkn]
 
-    # Workaround: User gibt es manuell ein bei Bedarf
     print(f"🔍 WKN '{wkn}' not found, please add manually.")
-    #cache[wkn] = "Unknown"
 
     with open(WKN_NAME_CACHE_PATH, "w") as f:
         json.dump(cache, f, indent=2)
@@ -66,22 +62,22 @@ def wkn_to_name_lookup(wkn: str) -> str:
 
 def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aktualisiert df['current_price'] in EUR und fügt df['momentum_3m'] hinzu.
-    - Preis: letzter Kurs -> in EUR umgerechnet (Heimatwährung -> EUR)
-    - Momentum: 3-Monats-Rendite auf Adj Close, OHNE FX-Umrechnung (unitless)
+    Updates `df['current_price']` in EUR and adds `df['momentum_3m']`.
+    - Price: last closing price -> converted to EUR (home currency -> EUR)
+    - Momentum: 3-month return based on Adjusted Close, WITHOUT FX conversion (unitless)
 
-    Erwartet:
-        df mit Spalten ['wkn', 'current_price']
-        und eine Funktion: wkn_to_ticker_lookup(wkn: str) -> str (Yahoo-Ticker)
+    Expects:
+        `df` with columns ['wkn', 'current_price']
+        and a function: `wkn_to_ticker_lookup(wkn: str) -> str` (Yahoo ticker)
     """
-    # FX-Cache: Multiplikator von Quellwährung nach EUR
+    # FX cache: multiplier from source currency to EUR
     fx_cache = {"EUR": 1.0}
 
     def _log(msg):
         print(msg)
 
     def _safe_last_price(t: yf.Ticker):
-        """Robust den letzten Preis holen (native Währung)."""
+        """receive last available price from ticker t, or None"""
         try:
             fi = getattr(t, "fast_info", None) or {}
             p = fi.get("last_price")
@@ -105,7 +101,7 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
         return None
 
     def _ticker_currency(t: yf.Ticker):
-        """Währung des Listings bestimmen."""
+        """Currncy of the ticker, or 'EUR' if not found."""
         try:
             fi = getattr(t, "fast_info", None) or {}
             cur = fi.get("currency")
@@ -125,7 +121,7 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
     def fx_to_eur_multiplier(from_currency: str):
         """
         EUR_amount = amount_native * multiplier.
-        Versucht erst EURCUR=X (multiplier = 1/quote), dann CUREUR=X (multiplier = quote).
+        Try EURCUR=X (multiplier = 1/quote), else CUREUR=X (multiplier = quote).
         """
         from_currency = (from_currency or "EUR").upper()
         if from_currency in fx_cache:
@@ -137,7 +133,7 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
         pair1 = f"EUR{from_currency}=X"   # 1 EUR = X CUR -> EUR = CUR / X -> mult = 1/X
         pair2 = f"{from_currency}EUR=X"   # 1 CUR = X EUR -> EUR = CUR * X -> mult = X
 
-        # Versuch 1
+        # First try
         try:
             q = yf.Ticker(pair1)
             price = getattr(q, "fast_info", {}).get("last_price")
@@ -151,7 +147,7 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
         except Exception:
             pass
 
-        # Versuch 2
+        # Second 
         try:
             q = yf.Ticker(pair2)
             price = getattr(q, "fast_info", {}).get("last_price")
@@ -169,11 +165,11 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
         fx_cache[from_currency] = 1.0
         return 1.0
 
+
     def _momentum_3m_native(ticker: str):
         """
-        3M-Momentum auf Adj Close (auto_adjust=True), OHNE FX.
-        Def.: (P_t / P_{t-3M}) - 1; wenn an t-3M kein Handel, nimm letzten <= t-3M.
-        Fallback: ~63 Handelstage zurück.
+        3M-Momentum based on Adj Close (auto_adjust=True), OHNE FX.
+        Def.: (P_t / P_{t-3M}) - 1; if no data for t-3M, use an older one <= t-3M.
         """
         try:
             hist = yf.Ticker(ticker).history(period="9mo", interval="1d", auto_adjust=True)
@@ -209,7 +205,7 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
     for wkn in df_out["wkn"].astype(str):
         ticker = wkn_to_ticker_lookup(wkn)
         if not ticker:
-            _log(f"⚠️ Keine Ticker-Zuordnung für WKN {wkn}.")
+            _log(f"⚠️ No Ticker for WKN: {wkn}. Check your wkn_ticker_cache.json")
             continue
 
         try:
@@ -224,19 +220,19 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
                 if price_eur is not None and not (math.isnan(price_eur) or math.isinf(price_eur)):
                     price_eur_map[wkn] = price_eur
                 else:
-                    _log(f"❌ Ungültiger EUR-Preis für {ticker} (WKN {wkn}).")
+                    _log(f"❌ No Price in EUR available for {ticker} (WKN {wkn}).")
             else:
-                _log(f"❌ Kein aktueller Preis für {ticker} (WKN {wkn}).")
+                _log(f"❌ No Price available for {ticker} (WKN {wkn}).")
 
             # 2) momentum_3m (OHNE FX)
             m3 = _momentum_3m_native(ticker)
             if m3 is not None:
                 mom3m_map[wkn] = m3
             else:
-                _log(f"ℹ️ Kein 3M-Momentum berechenbar für {ticker} (WKN {wkn}).")
+                _log(f"Cannot calculate 3-M-Momentum for {ticker} (WKN {wkn}).")
 
         except Exception as e:
-            _log(f"❌ Fehler bei {ticker} (WKN {wkn}): {e}")
+            _log(f"❌ Error for {ticker} (WKN {wkn}): {e}")
 
     # Preise aktualisieren
     if price_eur_map:
