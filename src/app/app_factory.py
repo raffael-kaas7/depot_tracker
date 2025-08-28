@@ -44,4 +44,8 @@ def create_app(config_name='default'):
     from app.ui.layout import get_main_layout
     app.layout = get_main_layout()
     
+    # Initialize scheduler after callbacks are registered
+    from app.services.scheduler_service import scheduler_service
+    scheduler_service.start_scheduler()
+    
     return app

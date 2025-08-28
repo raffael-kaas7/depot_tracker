@@ -51,6 +51,10 @@ def register_callbacks(app):
     service_cd_1 = DepotService(data_cd_1)
     service_cd_2 = DepotService(data_cd_2)
     
+    # Register services in global registry for scheduler access
+    from app.services.service_registry import registry
+    registry.register_services(data_cd_1, data_cd_2, service_cd_1, service_cd_2)
+    
     BERLIN_TZ = ZoneInfo("Europe/Berlin")
     
     # ---------------------------
