@@ -215,11 +215,7 @@ def register_callbacks(app):
     )
     def show_dividend_chart(_):
         # Persistent dividends storage file (shared by all depots)
-        dividends_file = (
-            "./mock/generated_mock_data/dividends_mock.yaml"
-            if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
-            else "data/dividends.yaml"
-        )
+        dividends_file = "data/dividends.yaml"
         
         # Refresh (if your services write to dividends_file)
         try:
@@ -286,11 +282,7 @@ def register_callbacks(app):
         Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
     )
     def render_dividend_table(_):
-        dividends_file = (
-            "./mock/generated_mock_data/dividends_mock.yaml"
-            if os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
-            else "data/dividends.yaml"
-        )
+        dividends_file = "data/dividends.yaml"
         
         try:
             with open(dividends_file, "r", encoding="utf-8") as f:

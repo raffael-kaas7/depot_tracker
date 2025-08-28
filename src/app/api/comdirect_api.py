@@ -33,46 +33,42 @@ class ComdirectAPI(BaseBankAPI):
     # Comdirect specific authentication procedure
     # override abstract methods from base class
     def authenticate(self):
+        # 1. get initial token
+        self._collect_initial_token()
 
-        if self.use_generated_mock_data:
-            return
-        else: 
-            # 1. get initial token
-            self._collect_initial_token()
+        # 2. get session info needed for authentication
+        session_data = self._get_session_info()
 
-            # 2. get session info needed for authentication
-            session_data = self._get_session_info()
+        # 3. call for tan authentication (Photo Push Tan)
+        challenge = self._raise_challenge_to_validate_tan(session_data)
+        print("🔐 Activate photo TAN")
+        
+        # TODO: ideally we would wait here until user confirms photo tan on mobile app (Check if there is an Endpoint for that)
+        time.sleep(10) # sleep 10 seconds to allow user to confirm photo tan on mobile app
+        
+        # tan = input() # if we want to give a TAN number and not using photo tan
 
-            # 3. call for tan authentication (Photo Push Tan)
-            challenge = self._raise_challenge_to_validate_tan(session_data)
-            print("🔐 Activate photo TAN")
-            
-            # TODO: ideally we would wait here until user confirms photo tan on mobile app (Check if there is an Endpoint for that)
-            time.sleep(10) # sleep 10 seconds to allow user to confirm photo tan on mobile app
-            
-            # tan = input() # if we want to give a TAN number and not using photo tan
+        # 4. activate tan
+        self._activate_tan(session_data, challenge)
 
-            # 4. activate tan
-            self._activate_tan(session_data, challenge)
+        # 5. check authentication and retrieve secondary token for full comdirect access
+        try:
+            self._collect_final_token()
+            print("authentication fully completed")
 
-            # 5. check authentication and retrieve secondary token for full comdirect access
-            try:
-                self._collect_final_token()
-                print("authentication fully completed")
+        except requests.exceptions.HTTPError as e:
+            print(f"HTTP error occurred: {e}")
 
-            except requests.exceptions.HTTPError as e:
-                print(f"HTTP error occurred: {e}")
-
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")
-                    
-            # set depot it
-            self._retrieve_depot_id()
-            
-            # update local data
-            self._save_positions()
-            self._save_statements()
-            self._save_depot_id()
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+                
+        # set depot it
+        self._retrieve_depot_id()
+        
+        # update local data
+        self._save_positions()
+        self._save_statements()
+        self._save_depot_id()
 
     # override abstract methods from base class
     def _get_positions(self):

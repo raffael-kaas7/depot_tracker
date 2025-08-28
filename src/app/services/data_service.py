@@ -10,12 +10,8 @@ import pandas as pd
 class DataManager:
     def __init__(self, depot_name: str):
         self.name = depot_name
-        self.use_generated_mock_data = os.getenv("USE_GENERATED_MOCK_DATA", "false").lower() == "true"
         
-        if self.use_generated_mock_data:
-            self.data_folder = os.path.join("mock", "generated_mock_data/", self.name)  
-        else:
-            self.data_folder = os.path.join("data", self.name)
+        self.data_folder = os.path.join("data", self.name)
 
         # load data from last Comdirect API synchronization
         self.statements = self._load_statements()

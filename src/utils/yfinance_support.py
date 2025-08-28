@@ -5,8 +5,8 @@ import os
 import math
 import pandas as pd
 
-WKN_NAME_CACHE_PATH = "data/wkn_name_cache.json" if os.getenv("USE_GENERATED_MOCK_DATA") == "false" else "data/wkn_name_dummy_cache.json"
-WKN_TICKER_CACHE_PATH = "data/wkn_ticker_cache.json" if os.getenv("USE_GENERATED_MOCK_DATA") == "false" else "data/wkn_ticker_dummy_cache.json"
+WKN_NAME_CACHE_PATH = "data/wkn_name_cache.json"
+WKN_TICKER_CACHE_PATH = "data/wkn_ticker_cache.json"
 
 def wkn_to_name(wkn: str) -> str:
     try:

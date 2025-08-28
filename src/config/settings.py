@@ -20,7 +20,6 @@ class Config:
     DATA_DIR = BASE_DIR / 'data'
     STATIC_DIR = BASE_DIR / 'static'
     ASSETS_FOLDER = str(BASE_DIR / 'assets')
-    MOCK_DATA_DIR = BASE_DIR / 'mock' / 'generated_mock_data'
     
     # API Configuration
     DEPOT_1_NAME = os.getenv("DEPOT_1_NAME", "Depot 1")
@@ -47,19 +46,16 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
-    USE_MOCK_DATA = True
 
 
 class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
-    USE_MOCK_DATA = False
 
 
 class TestingConfig(Config):
     """Testing configuration"""
     TESTING = True
-    USE_MOCK_DATA = True
     WTF_CSRF_ENABLED = False
 
 
