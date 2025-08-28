@@ -115,7 +115,7 @@ def create_layout():
 
     content = html.Div([
         html.Header([
-            html.H1("Comdirect – Depot Tracker", className="text-light my-3 h1-app"),
+            html.H1("Comdirect – Depot Tracker", className="h1-app text-light my-3"),
         ], className="px-2"),
         html.Main([
             assets_section,

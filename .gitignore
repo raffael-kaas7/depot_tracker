@@ -15,3 +15,4 @@ data/wkn_ticker_cache.json
 data/snapshot.json
 data/manual/*
 todo.txt
+.github/*

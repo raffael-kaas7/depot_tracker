@@ -3,7 +3,7 @@ from typing import Union
 import yaml
 import re
 import json
-from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup, update_prices_from_yf
+from utils.yfinance_support import wkn_to_name, wkn_to_name_lookup, update_prices_from_yf
 import pandas as pd
 
 

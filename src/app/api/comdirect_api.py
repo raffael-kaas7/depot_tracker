@@ -1,5 +1,5 @@
 from .base_bank import BaseBankAPI
-from backend.api.mock_helper import MockHelper
+# from backend.api.mock_helper import MockHelper  # TODO: Move mock helper to utils
 
 import requests
 import json

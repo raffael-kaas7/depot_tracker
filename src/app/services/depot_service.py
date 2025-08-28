@@ -1,5 +1,5 @@
-from backend.data.data_manager import DataManager
-from backend.data.yfinance_support import wkn_to_name, wkn_to_name_lookup
+from app.services.data_service import DataManager
+from utils.yfinance_support import wkn_to_name, wkn_to_name_lookup
 
 import yaml
 import os
@@ -15,6 +15,20 @@ class DepotService:
         self.data.get_positions()
         self.positions = self._process_positions(self.data.get_positions())
         return self.positions
+    
+    def compute_summary(self):
+        """Compute total value and cost for the depot"""
+        positions = self.get_positions()
+        if positions is None or positions.empty:
+            return {"total_value": 0, "total_cost": 0}
+        
+        total_value = positions["current_value"].sum() if "current_value" in positions else 0
+        total_cost = positions["purchase_value"].sum() if "purchase_value" in positions else 0
+        
+        return {
+            "total_value": float(total_value),
+            "total_cost": float(total_cost)
+        }
 
     def get_dividends(self):
         return self.data.get_dividends()

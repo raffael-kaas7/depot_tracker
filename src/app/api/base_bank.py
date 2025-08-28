@@ -74,4 +74,3 @@ class BaseBankAPI(ABC):
     def _save_depot_id(self):
         if not self.use_generated_mock_data:
             self._write_data("depot_id.json", {"depot_id": self.depot_id})
-
