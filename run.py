@@ -21,14 +21,15 @@ if __name__ == '__main__':
     
     # Run the application
     port = int(os.getenv('PORT', 8000))
+    host = str(os.getenv('HOST', 'localhost'))
     debug = config_name == 'development'
     
-    print(f"🚀 Starting Depot Tracker on http://localhost:{port}")
+    print(f"🚀 Starting Depot Tracker on http://{host}:{port}")
     print(f"📊 Environment: {config_name}")
     print(f"🔧 Debug mode: {debug}")
     
     app.run(
-        host='0.0.0.0',
+        host=host,
         port=port,
         debug=debug
     )

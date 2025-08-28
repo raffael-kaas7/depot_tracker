@@ -51,8 +51,12 @@ class DataManager:
     
     # Merge total_dividends into positions DataFrame to show total dividends received by an asset in the portfolio table
     def _merge_dividends_into_positions(self):
+        # Only merge if positions DataFrame is not empty
+        if self.positions.empty:
+            return
+
         # Extract dividends
-        dividends = self._extract_dividends_from_statements() # check for new dividends in account statements
+        dividends = self._extract_dividends_from_statements()  # check for new dividends in account statements
         # Convert dividends to a DataFrame
         dividends_df = pd.DataFrame(dividends)
         # Ensure the wkn column is of type string in both DataFrames
@@ -66,7 +70,7 @@ class DataManager:
             total_dividends = pd.DataFrame(columns=["wkn", "total_dividends"])
 
         total_dividends["total_dividends"] = pd.to_numeric(total_dividends["total_dividends"], errors="coerce").round(0)
-        
+
         # Merge the total dividends into the positions DataFrame
         self.positions = self.positions.merge(total_dividends, on="wkn", how="left")
 
@@ -94,8 +98,10 @@ class DataManager:
             return json.load(f)
     
     def _load_positions(self):
-        df = pd.json_normalize(self._read_data("positions.json"))
-
+        data = self._read_data("positions.json")
+        if not data:
+            return pd.DataFrame()
+        df = pd.json_normalize(data)
         df["wkn"] = df["wkn"]
         df["count"] = pd.to_numeric(df["quantity.value"], errors="coerce").round(2)
         df["purchase_price"] = pd.to_numeric(df["purchasePrice.value"], errors="coerce").round(2)

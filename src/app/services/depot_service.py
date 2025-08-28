@@ -58,10 +58,17 @@ class DepotService:
         pass
 
     def _process_positions(self, positions):
-        # add new columns
-        positions["performance_%"] = round(((positions["current_value"] - positions["purchase_value"]) / positions["purchase_value"]) * 100, 2)
-        total_current_value = positions["current_value"].sum()
-        positions["percentage_in_depot"] = round((positions["current_value"] / total_current_value) * 100, 2)
+        # add new columns only if required columns exist
+        if "current_value" in positions and "purchase_value" in positions:
+            positions["performance_%"] = round(
+            ((positions["current_value"] - positions["purchase_value"]) / positions["purchase_value"]) * 100, 2
+            )
+        if "current_value" in positions:
+            total_current_value = positions["current_value"].sum()
+            if total_current_value != 0:
+                positions["percentage_in_depot"] = round(
+                    (positions["current_value"] / total_current_value) * 100, 2
+            )
 
         return positions
    

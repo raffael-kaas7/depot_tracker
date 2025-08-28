@@ -117,7 +117,7 @@ def register_callbacks(app):
     
     def process_depot(positions: pd.DataFrame, title: str, summary=True):
         if positions is None or positions.empty:
-            return html.Div([html.H4(title), dbc.Alert("No positions to display.", color="secondary")])
+            return html.Div([html.H4(title), dbc.Alert("No positions to display. Authenticate and sync depots first (Sync Depot 1, Sync Depot 2)", color="secondary")])
 
         # totals
         total_purchase_value = positions["purchase_value"].sum()
@@ -233,7 +233,7 @@ def register_callbacks(app):
         df = pd.DataFrame(dividends)
         if df.empty:
             fig = px.bar(pd.DataFrame({"month_name": [], "amount": [], "year": []}), x="month_name", y="amount", color="year")
-            return fig, html.Div("No dividend data yet.", className="text-muted")
+            return fig, html.Div("No dividend data available.", className="text-muted")
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"])
@@ -292,7 +292,7 @@ def register_callbacks(app):
 
         df = pd.DataFrame(dividends)
         if df.empty:
-            return dbc.Alert("No dividend data yet.", color="secondary")
+            return dbc.Alert("No dividend data available.", color="secondary")
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"]).sort_values("date", ascending=False)

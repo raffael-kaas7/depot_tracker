@@ -30,13 +30,11 @@ def wkn_to_ticker_lookup(wkn: str) -> str:
 
     if wkn in cache:
         return cache[wkn]
-
-    print(f"🔍 WKN '{wkn}' not found, please add manually.")
-
-    with open(WKN_TICKER_CACHE_PATH, "w") as f:
-        json.dump(cache, f, indent=2)
-
-    return cache[wkn]
+    else:
+        print(f"🔍 WKN '{wkn}' not found, please add manually to {WKN_TICKER_CACHE_PATH}.")
+        with open(WKN_TICKER_CACHE_PATH, "w") as f:
+            json.dump(cache, f, indent=2)
+        return "Unknown"
 
 def wkn_to_name_lookup(wkn: str) -> str:
     wkn = str(wkn)  # always string
@@ -51,13 +49,11 @@ def wkn_to_name_lookup(wkn: str) -> str:
 
     if wkn in cache:
         return cache[wkn]
-
-    print(f"🔍 WKN '{wkn}' not found, please add manually.")
-
-    with open(WKN_NAME_CACHE_PATH, "w") as f:
-        json.dump(cache, f, indent=2)
-
-    return cache[wkn]
+    else:
+        print(f"🔍 WKN '{wkn}' not found, please add manually to {WKN_NAME_CACHE_PATH}.")
+        with open(WKN_NAME_CACHE_PATH, "w") as f:
+            json.dump(cache, f, indent=2)
+        return "Unknown"
 
 
 def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
@@ -244,6 +240,3 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
     df_out["momentum_3m"] = df_out["wkn"].astype(str).map(mom3m_map)
 
     return df_out
-
-
-
