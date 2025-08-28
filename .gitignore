@@ -10,8 +10,7 @@ data/*/positions.json
 data/*/statements.json
 data/*/depot_id.json
 data/*/snapshot.json
-data/wkn_name_cache.json
-data/wkn_ticker_cache.json
+data/wkn_metadata_lookup.json
 data/snapshot.json
 data/manual/*
 todo.txt

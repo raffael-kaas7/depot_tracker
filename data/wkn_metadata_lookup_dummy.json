@@ -1,0 +1,66 @@
+{
+  "870747": {
+    "name": "Microsoft",
+    "ticker": "MSF.DE",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "IT",
+    "risk_estimation": "low"
+  },
+  "865985": {
+    "name": "Apple",
+    "ticker": "AAPL",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "IT",
+    "risk_estimation": "low"
+  },
+  "A14Y6F": {
+    "name": "Alphabet",
+    "ticker": "GOOG",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "Communication Services",
+    "risk_estimation": "medium"
+  },
+  "918422": {
+    "name": "Nvidia",
+    "ticker": "NVD.DE",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "IT",
+    "risk_estimation": "medium"
+  },
+  "852062": {
+    "name": "Procter & Gamble",
+    "ticker": "PRG.F",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "Consumer Staples",
+    "risk_estimation": "low"
+  },
+  "A0JNE2": {
+    "name": "Unilever",
+    "ticker": "UNVB.SG",
+    "region": "Europe",
+    "asset_class": "Equity",
+    "sector": "Consumer Staples",
+    "risk_estimation": "low"
+  },
+  "899744": {
+    "name": "Realty",
+    "ticker": "O",
+    "region": "North America",
+    "asset_class": "Real Estate",
+    "sector": "Real Estate",
+    "risk_estimation": "medium"
+  },
+  "850663": {
+    "name": "Coca Cola",
+    "ticker": "KO",
+    "region": "North America",
+    "asset_class": "Equity",
+    "sector": "Consumer Staples",
+    "risk_estimation": "low"
+  }
+}

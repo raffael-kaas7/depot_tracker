@@ -20,7 +20,7 @@ from datetime import datetime
 import pandas as pd
 
 from app.services.data_service import DataManager
-from utils.yfinance_support import wkn_to_name, wkn_to_name_lookup
+from app.services.wkn_metadata_service import wkn_metadata_service
 
 
 class DepotService:
@@ -173,7 +173,7 @@ class DepotService:
         df = df.groupby("wkn").agg({"wert": "sum"}).reset_index()
         
         # Add human-readable names for better chart labels
-        df["name"] = df["wkn"].apply(wkn_to_name_lookup)
+        df["name"] = df["wkn"].apply(wkn_metadata_service.get_name)
         
         return df
 
@@ -213,6 +213,11 @@ class DepotService:
         
         # Calculate performance percentage for each position
         if "current_value" in enriched_positions.columns and "purchase_value" in enriched_positions.columns:
+            # Calculate absolute gain/loss in euros for each position
+            enriched_positions["absolute_gain_loss"] = round(
+                enriched_positions["current_value"] - enriched_positions["purchase_value"], 2
+            )
+            
             # Avoid division by zero by using numpy where
             enriched_positions["performance_%"] = round(
                 ((enriched_positions["current_value"] - enriched_positions["purchase_value"]) 

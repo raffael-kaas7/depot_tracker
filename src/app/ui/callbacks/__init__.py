@@ -134,17 +134,47 @@ def register_callbacks(app):
             positions["momentum_3m"] = np.nan
         positions["momentum_3m_disp"] = positions["momentum_3m"].map(momentum_display)
 
-        # render table
+        # render table with compact column headers for better space usage
         show_cols = [
-            ("name","Name"), ("count","Count"),
-            ("purchase_price","Purchase Price (€)"), ("current_price","Current Price (€)"),
-            ("purchase_value","Purchase Value (€)"), ("current_value","Current Value (€)"),
-            ("performance_%","Performance (%)"), ("percentage_in_depot","Allocation (%)"),
-            ("total_dividends","Total Dividends (€)"), ("momentum_3m_disp","3-M-Momentum")
+            ("name","Name"), ("count","Quantity"),
+            ("purchase_price","Price"), ("current_price","Price Now"),
+            ("purchase_value","Invested €"), ("current_value","Curr. Value"),
+            ("performance_%","Performance %"), ("absolute_gain_loss","Abs. Diff"),
+            ("percentage_in_depot","Allocation %"),
+            ("total_dividends","Tot. Dividends"), ("momentum_3m_disp","3M-Mom")
         ]
         cols = [c for c,_ in show_cols if c in positions.columns]
+        
+        # Create column definitions with English/US number formatting
+        table_columns = []
+        for c, n in show_cols:
+            if c in positions.columns:
+                column_def = {"name": n, "id": c}
+                
+                # Add number formatting for different column types
+                if c in ["purchase_price", "current_price", "purchase_value", "current_value", "absolute_gain_loss", "total_dividends"]:
+                    # Currency formatting with English/US locale (, for thousands, . for decimals)
+                    column_def.update({
+                        "type": "numeric",
+                        "format": {"specifier": ",.2f"}
+                    })
+                elif c in ["performance_%", "percentage_in_depot"]:
+                    # Percentage formatting
+                    column_def.update({
+                        "type": "numeric", 
+                        "format": {"specifier": ",.2f"}
+                    })
+                elif c == "count":
+                    # Integer formatting for quantities
+                    column_def.update({
+                        "type": "numeric",
+                        "format": {"specifier": ",.0f"}
+                    })
+                
+                table_columns.append(column_def)
+        
         table = dash_table.DataTable(
-            columns=[{"name": n, "id": c} for c,n in show_cols if c in positions.columns],
+            columns=table_columns,
             data=positions[cols].to_dict("records"),
             sort_action="native",
             sort_by=[{"column_id": "percentage_in_depot", "direction": "desc"}] if "percentage_in_depot" in cols else [],
@@ -152,6 +182,8 @@ def register_callbacks(app):
             style_data_conditional=[
                 {"if": {"column_id": "performance_%", "filter_query": "{performance_%} < 0"}, "color": "#ff6b6b"},
                 {"if": {"column_id": "performance_%", "filter_query": "{performance_%} >= 0"}, "color": "#1dd1a1"},
+                {"if": {"column_id": "absolute_gain_loss", "filter_query": "{absolute_gain_loss} < 0"}, "color": "#ff6b6b"},
+                {"if": {"column_id": "absolute_gain_loss", "filter_query": "{absolute_gain_loss} >= 0"}, "color": "#1dd1a1"},
                 {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} >= 0.10"}, "color": "#1dd1a1"},
                 {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} >= 0.03 && {momentum_3m} < 0.10"}, "color": "#10ac84"},
                 {"if": {"column_id": "momentum_3m_disp", "filter_query": "{momentum_3m} > -0.03 && {momentum_3m} < 0.03"}, "color": "#c8d6e5"},
@@ -300,6 +332,9 @@ def register_callbacks(app):
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"]).sort_values("date", ascending=False)
+        
+        # Format date column to show only date (YYYY-MM-DD) without time
+        df["date"] = df["date"].dt.strftime("%Y-%m-%d")
 
         table = dash_table.DataTable(
             columns=[{"name":"Date","id":"date"},{"name":"Company","id":"company"},{"name":"Net amount (€)","id":"amount"}],

@@ -1,59 +1,23 @@
 
+"""
+Yahoo Finance Support Utilities for Depot Tracker.
+
+This module provides utilities for integrating with Yahoo Finance API to fetch
+stock prices and company information. It handles price updates, currency conversion,
+and momentum calculations for portfolio analysis.
+
+The module is focused solely on Yahoo Finance API operations and price data
+processing. WKN metadata lookup functionality has been moved to the dedicated
+WKN metadata service in the service layer.
+"""
 import yfinance as yf
-import json
-import os
 import math
+from typing import Dict, Any, Optional
 import pandas as pd
 
-WKN_NAME_CACHE_PATH = "data/wkn_name_cache.json"
-WKN_TICKER_CACHE_PATH = "data/wkn_ticker_cache.json"
+# Import metadata service for ticker lookup
+from app.services.wkn_metadata_service import wkn_metadata_service
 
-def wkn_to_name(wkn: str) -> str:
-    try:
-        ticker = yf.Ticker(wkn)
-        info = ticker.info
-        return info.get("shortName") or info.get("longName") or "Unknown"
-    except Exception:
-        return "Unknown"
-
-
-def wkn_to_ticker_lookup(wkn: str) -> str:
-    wkn = str(wkn)  # always string
-
-    # load cache
-    if os.path.exists(WKN_TICKER_CACHE_PATH):
-        with open(WKN_TICKER_CACHE_PATH, "r") as f:
-            raw = json.load(f)
-            cache = {str(k): v for k, v in raw.items()}  # all keys as str
-    else:
-        cache = {}
-
-    if wkn in cache:
-        return cache[wkn]
-    else:
-        print(f"🔍 WKN '{wkn}' not found, please add manually to {WKN_TICKER_CACHE_PATH}.")
-        with open(WKN_TICKER_CACHE_PATH, "w") as f:
-            json.dump(cache, f, indent=2)
-        return "Unknown"
-
-def wkn_to_name_lookup(wkn: str) -> str:
-    wkn = str(wkn)  # always string
-
-    # load cache
-    if os.path.exists(WKN_NAME_CACHE_PATH):
-        with open(WKN_NAME_CACHE_PATH, "r") as f:
-            raw = json.load(f)
-            cache = {str(k): v for k, v in raw.items()}  # ← all Keys as str
-    else:
-        cache = {}
-
-    if wkn in cache:
-        return cache[wkn]
-    else:
-        print(f"🔍 WKN '{wkn}' not found, please add manually to {WKN_NAME_CACHE_PATH}.")
-        with open(WKN_NAME_CACHE_PATH, "w") as f:
-            json.dump(cache, f, indent=2)
-        return "Unknown"
 
 
 def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
@@ -199,9 +163,9 @@ def update_prices_from_yf(df: pd.DataFrame) -> pd.DataFrame:
     mom3m_map = {}
 
     for wkn in df_out["wkn"].astype(str):
-        ticker = wkn_to_ticker_lookup(wkn)
-        if not ticker:
-            _log(f"⚠️ No Ticker for WKN: {wkn}. Check your wkn_ticker_cache.json")
+        ticker = wkn_metadata_service.get_ticker(wkn)
+        if not ticker or ticker == "Unknown":
+            _log(f"⚠️ No Ticker for WKN: {wkn}. Check your metadata lookup.")
             continue
 
         try:

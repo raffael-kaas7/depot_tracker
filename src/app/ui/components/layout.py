@@ -47,25 +47,19 @@ def create_layout():
         ])
     ], className="sidebar")
 
-    # --- Assets section ---
-    assets_controls = dbc.Row(
+    # --- Shared sync controls (always visible regardless of active tab) ---
+    shared_sync_controls = dbc.Row(
         [
-            # Slider on the left
+            # Status messages on the left
             dbc.Col(
                 [
-                    daq.ToggleSwitch(
-                        id="table-switch",
-                        label="Separated Depots",
-                        labelPosition="right",
-                        value=False,  # Default value corresponds to "Combined Depots"
-                        className="text-light",
-                        style={"marginBottom": "16px", "width": "150px"},  # Adjust width for alignment
-                    )
+                    html.Div(id="auth-status-cd1", className="text-muted mb-1"),
+                    html.Div(id="auth-status-cd2", className="text-muted"),
                 ],
-                md=6,  # Take half the row width
-                align="center",  # Vertically align the slider
+                md=6,
+                align="center",
             ),
-            # Buttons on the right
+            # Sync buttons on the right
             dbc.Col(
                 [
                     html.Div(
@@ -85,16 +79,36 @@ def create_layout():
                         className="d-flex justify-content-end",  # Right-align buttons
                     )
                 ],
-                md=6,  # Take the other half of the row width
-                align="center",  # Vertically align the buttons
+                md=6,
+                align="center",
             ),
         ],
         className="align-items-center g-3 mb-3",  # Align items vertically and add spacing
     )
 
+    # --- Assets section ---
+    assets_controls = dbc.Row(
+        [
+            # Toggle switch for depot view mode
+            dbc.Col(
+                [
+                    daq.ToggleSwitch(
+                        id="table-switch",
+                        label="Separated Depots",
+                        labelPosition="right",
+                        value=False,  # Default value corresponds to "Combined Depots"
+                        className="text-light",
+                        style={"marginBottom": "16px", "width": "150px"},
+                    )
+                ],
+                md=12,
+                align="center",
+            ),
+        ],
+        className="align-items-center g-3 mb-3",
+    )
+
     assets_section = html.Div([
-        html.Div(id="auth-status-cd1", className="text-muted mb-2"),
-        html.Div(id="auth-status-cd2", className="text-muted mb-3"),
         assets_controls,
         html.Div(id="depot-table", className="mt-3")
     ], id="assets-section")
@@ -118,6 +132,10 @@ def create_layout():
             html.H1("Comdirect – Depot Tracker", className="h1-app text-light my-3"),
         ], className="px-2"),
         html.Main([
+            # Shared sync controls at the top, always visible
+            shared_sync_controls,
+            html.Hr(className="border-secondary my-3"),
+            # Tab-specific content below
             assets_section,
             dividends_section,
         ], className="px-2")

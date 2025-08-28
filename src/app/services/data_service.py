@@ -3,7 +3,8 @@ from typing import Union
 import yaml
 import re
 import json
-from utils.yfinance_support import wkn_to_name, wkn_to_name_lookup, update_prices_from_yf
+from utils.yfinance_support import update_prices_from_yf
+from app.services.wkn_metadata_service import wkn_metadata_service
 import pandas as pd
 
 
@@ -98,6 +99,22 @@ class DataManager:
             return json.load(f)
     
     def _load_positions(self):
+        """
+        Load and process position data from JSON file into a pandas DataFrame.
+        
+        This method reads the positions.json file, normalizes the nested JSON structure,
+        and enriches the data with company names and Yahoo Finance ticker symbols
+        using the consolidated WKN cache. The resulting DataFrame includes both
+        the original financial data and the lookup information for complete
+        security details.
+        
+        Returns:
+            pandas.DataFrame: Processed position data with columns including:
+                - Standard position data (wkn, count, prices, values)
+                - name: Company name from WKN lookup  
+                - ticker: Yahoo Finance ticker symbol from WKN lookup
+                - All original JSON fields as normalized columns
+        """
         data = self._read_data("positions.json")
         if not data:
             return pd.DataFrame()
@@ -109,8 +126,10 @@ class DataManager:
         df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
         df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
         
-        # get name from wkn via yfinance
-        df["name"] = df["wkn"].apply(wkn_to_name_lookup)
+        # Add company name and ticker from WKN metadata service
+        # These columns provide complete security information but won't be shown in frontend
+        df["name"] = df["wkn"].apply(wkn_metadata_service.get_name)
+        df["ticker"] = df["wkn"].apply(wkn_metadata_service.get_ticker)
 
         # store as a pandas datafield
         return df
@@ -153,7 +172,7 @@ class DataManager:
             wkn = m_wkn.group(1).strip() if m_wkn else None
             
             # Use wkn to get company name
-            company = wkn_to_name_lookup(wkn) if wkn else "Unknown"
+            company = wkn_metadata_service.get_name(wkn) if wkn else "Unknown"
 
             # Anzahl Stücke (02...)
             m_shares = re.search(r"02DEPOTBESTAND:\s*([\d,.]+)", info)
