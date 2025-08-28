@@ -2,8 +2,8 @@
 Allocation charts component for Depot Tracker.
 
 This module provides pie chart visualizations for portfolio allocation analysis
-using dynamic allocation columns that handle ETF breakdowns. It creates 
-interactive pie charts for asset class, sector, region, and risk estimation.
+based on the comprehensive WKN metadata. It creates interactive pie charts for
+asset class, sector, region, and risk estimation breakdowns.
 """
 import plotly.express as px
 import plotly.graph_objects as go
@@ -20,7 +20,7 @@ def create_allocation_pie_chart(df: pd.DataFrame, category: str, title: str) -> 
     
     Args:
         df: DataFrame with position data including dynamic allocation columns
-        category: Category type ('region', 'sector', 'asset_class', 'risk_estimation')
+        category: Category type ('region' or 'sector')
         title: Title for the chart
         
     Returns:
@@ -29,22 +29,17 @@ def create_allocation_pie_chart(df: pd.DataFrame, category: str, title: str) -> 
     if df is None or df.empty:
         return _create_empty_chart(title, "No data available")
     
-    # Handle allocation based on category type
-    if category in ['region', 'sector']:
-        # Use dynamic allocation columns for region and sector
-        allocation_data = _get_allocation_data(df, category)
-    else:
-        # Use traditional grouping for asset_class and risk_estimation
-        allocation_data = _get_traditional_allocation_data(df, category)
+    # Get allocation data by summing the relevant allocation columns
+    allocation_data = _get_allocation_data(df, category)
     
     if allocation_data.empty or allocation_data['value'].sum() == 0:
-        return _create_empty_chart(title, f"No {category.replace('_', ' ')} allocation data available")
+        return _create_empty_chart(title, f"No {category} allocation data available")
     
     # Filter out zero values
     allocation_data = allocation_data[allocation_data['value'] > 0]
     
     if allocation_data.empty:
-        return _create_empty_chart(title, f"No {category.replace('_', ' ')} allocation data available")
+        return _create_empty_chart(title, f"No {category} allocation data available")
     
     # Calculate percentages
     total_value = allocation_data['value'].sum()
@@ -58,21 +53,17 @@ def create_allocation_pie_chart(df: pd.DataFrame, category: str, title: str) -> 
         'asset_class': px.colors.qualitative.Set3,
         'sector': px.colors.qualitative.Pastel,
         'region': px.colors.qualitative.Set2,
-        'risk_estimation': ['#2E8B57', '#DC143C', '#FFD700']  # Green, Yellow, Red
+        'risk_estimation': ['#2E8B57', '#FFD700', '#DC143C']  # Green, Yellow, Red
     }
     
     colors = color_schemes.get(category, px.colors.qualitative.Set1)
     
-    # Configure text display - use clean approach with no labels on slices
-    # All information available in legend and on hover for cleaner visualization
-    textinfo = 'none'  # Only show in legend and on hover
-    textposition = 'inside'
     
     fig = go.Figure(data=[go.Pie(
         labels=allocation_data['category'],
         values=allocation_data['value'],
-        textinfo=textinfo,
-        textposition=textposition,
+        textinfo='label+percent',
+        textposition='outside',
         textfont_size=12,
         marker=dict(
             colors=colors[:len(allocation_data)],
@@ -163,34 +154,6 @@ def _get_allocation_data(df: pd.DataFrame, category: str) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 
-def _get_traditional_allocation_data(df: pd.DataFrame, category: str) -> pd.DataFrame:
-    """
-    Extract allocation data using traditional grouping for non-dynamic categories.
-    
-    Args:
-        df: DataFrame with position data
-        category: 'asset_class' or 'risk_estimation'
-        
-    Returns:
-        DataFrame with category and value columns
-    """
-    if category not in df.columns:
-        return pd.DataFrame(columns=['category', 'value'])
-    
-    # Filter out empty/unknown values
-    filtered_df = df[df[category].notna() & (df[category] != "") & (df[category] != "Unknown")]
-    
-    if filtered_df.empty:
-        return pd.DataFrame(columns=['category', 'value'])
-    
-    # Group and sum
-    result = filtered_df.groupby(category)['current_value'].sum().reset_index()
-    result = result[result['current_value'] > 0]
-    result.rename(columns={category: 'category', 'current_value': 'value'}, inplace=True)
-    
-    return result
-
-
 def _get_non_zero_positions(df: pd.DataFrame, category: str) -> pd.DataFrame:
     """Get positions that have non-zero allocation for the given category."""
     pattern = f"{category}_"
@@ -202,53 +165,125 @@ def _get_non_zero_positions(df: pd.DataFrame, category: str) -> pd.DataFrame:
     # Find rows where at least one allocation column is non-zero
     mask = df[allocation_columns].sum(axis=1) > 0
     return df[mask]
-
-
-def create_allocation_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Create a summary table showing allocation breakdown across all categories.
     
-    This function uses the dynamic allocation columns to provide comprehensive
-    allocation analysis including ETF breakdown distributions.
+    # Check if category column exists
+    if category not in filtered_df.columns:
+        filtered_df[category] = "Unknown"
     
-    Args:
-        df: DataFrame with position data including dynamic allocation columns
-        
-    Returns:
-        DataFrame with allocation summary across all categories
-    """
-    if df is None or df.empty:
-        return pd.DataFrame()
+    # Filter out empty, None, or placeholder values
+    excluded_values = ["", "Unknown", None, "N/A", "n/a"]
+    filtered_df = filtered_df[~filtered_df[category].isin(excluded_values)]
     
-    summaries = []
+    # Also filter out NaN values
+    filtered_df = filtered_df.dropna(subset=[category])
     
-    # Handle dynamic allocation categories (region, sector)
-    for category in ['region', 'sector']:
-        category_data = _get_allocation_data(df, category)
-        if not category_data.empty:
-            category_data['category_type'] = category.replace('_', ' ').title()
-            category_data.rename(columns={'category': 'category_value', 'value': 'current_value'}, inplace=True)
-            summaries.append(category_data)
+    # Remove whitespace-only values
+    filtered_df = filtered_df[filtered_df[category].str.strip() != ""]
     
-    # Handle traditional categories (asset_class, risk_estimation)
-    for category in ['asset_class', 'risk_estimation']:
-        category_data = _get_traditional_allocation_data(df, category)
-        if not category_data.empty:
-            category_data['category_type'] = category.replace('_', ' ').title()
-            category_data.rename(columns={'category': 'category_value', 'value': 'current_value'}, inplace=True)
-            summaries.append(category_data)
+    if filtered_df.empty:
+        # Create chart with message about filtered data
+        fig = go.Figure()
+        total_excluded = len(df) - len(filtered_df)
+        fig.add_annotation(
+            text=f"No valid {category.replace('_', ' ')} data<br>({total_excluded} assets excluded)",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font_size=16
+        )
+        fig.update_layout(
+            title=title,
+            showlegend=False,
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
     
-    # Combine all summaries
-    if summaries:
-        summary_df = pd.concat(summaries, ignore_index=True)
-        
-        # Calculate percentages
-        total_value = df['current_value'].sum()
-        summary_df['percentage'] = (summary_df['current_value'] / total_value * 100).round(1)
-        
-        # Reorder columns and sort
-        summary_df = summary_df[['category_type', 'category_value', 'current_value', 'percentage']]
-        summary_df.columns = ['Category Type', 'Category', 'Value (€)', 'Percentage (%)']
-        return summary_df.sort_values(['Category Type', 'Percentage (%)'], ascending=[True, False])
+    # Group by category and sum current values
+    allocation_data = filtered_df.groupby(category)['current_value'].sum().reset_index()
+    allocation_data = allocation_data[allocation_data['current_value'] > 0]  # Remove zero values
     
-    return pd.DataFrame()
+    if allocation_data.empty:
+        # Create empty chart with message
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No allocation data available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font_size=16
+        )
+        fig.update_layout(
+            title=title,
+            showlegend=False,
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+    
+    # Calculate percentages
+    total_value = allocation_data['current_value'].sum()
+    allocation_data['percentage'] = (allocation_data['current_value'] / total_value * 100).round(1)
+    
+    # Calculate excluded assets for informational purposes
+    total_assets = len(df)
+    included_assets = len(filtered_df)
+    excluded_assets = total_assets - included_assets
+    
+    # Update title to include exclusion information if any assets were filtered
+    display_title = title
+    if excluded_assets > 0:
+        display_title += f" ({excluded_assets} assets excluded)"
+    
+    # Create pie chart with custom colors based on category
+    color_schemes = {
+        'asset_class': px.colors.qualitative.Set3,
+        'sector': px.colors.qualitative.Pastel,
+        'region': px.colors.qualitative.Set2,
+        'risk_estimation': ['#2E8B57', '#FFD700', '#DC143C']  # Green, Yellow, Red for Low, Medium, High
+    }
+    
+    colors = color_schemes.get(category, px.colors.qualitative.Set1)
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=allocation_data[category],
+        values=allocation_data['current_value'],
+        textinfo='label+percent',
+        textposition='outside',
+        textfont_size=12,
+        marker=dict(
+            colors=colors[:len(allocation_data)],
+            line=dict(color='#000000', width=2)
+        ),
+        hovertemplate='<b>%{label}</b><br>' +
+                     'Value: €%{value:,.0f}<br>' +
+                     'Percentage: %{percent}<br>' +
+                     '<extra></extra>'
+    )])
+    
+    fig.update_layout(
+        title={
+            'text': display_title,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16, 'color': 'white'}
+        },
+        font=dict(color='white'),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        height=400,
+        margin=dict(t=50, b=50, l=50, r=50),
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.05,
+            font=dict(color='white')
+        )
+    )
+    
+    return fig

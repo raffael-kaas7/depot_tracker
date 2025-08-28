@@ -16,6 +16,7 @@ from app.services.depot_service import DepotService
 from app.api.comdirect_api import ComdirectAPI
 from app.services.data_service import DataManager
 from app.ui.components.layout import create_summary_row
+from app.ui.components.charts import create_allocation_pie_chart
 from config.settings import get_settings
 
 
@@ -62,21 +63,34 @@ def register_callbacks(app):
     # ---------------------------
     @app.callback(
         Output("assets-section", "style"),
+        Output("allocation-section", "style"),
         Output("dividends-section", "style"), 
         Output("nav-assets", "active"),
+        Output("nav-allocation", "active"),
         Output("nav-dividends", "active"),
         Input("nav-assets", "n_clicks"),
+        Input("nav-allocation", "n_clicks"),
         Input("nav-dividends", "n_clicks"),
     )
-    def switch_sections(n_assets, n_divs):
+    def switch_sections(n_assets, n_allocation, n_divs):
         # default to assets on initial load
         ctx = callback_context
         which = "assets"
         if ctx.triggered:
-            which = "assets" if ctx.triggered[0]["prop_id"].startswith("nav-assets") else "dividends"
+            trigger_id = ctx.triggered[0]["prop_id"]
+            if trigger_id.startswith("nav-assets"):
+                which = "assets"
+            elif trigger_id.startswith("nav-allocation"):
+                which = "allocation"
+            elif trigger_id.startswith("nav-dividends"):
+                which = "dividends"
+        
         if which == "assets":
-            return {"display": "block"}, {"display": "none"}, True, False
-        return {"display": "none"}, {"display": "block"}, False, True
+            return {"display": "block"}, {"display": "none"}, {"display": "none"}, True, False, False
+        elif which == "allocation":
+            return {"display": "none"}, {"display": "block"}, {"display": "none"}, False, True, False
+        else:  # dividends
+            return {"display": "none"}, {"display": "none"}, {"display": "block"}, False, False, True
     
     # ---------------------------
     # Sync buttons (separate fns)
@@ -343,3 +357,61 @@ def register_callbacks(app):
             page_size=12, sort_action="native", filter_action="native",
         )
         return table
+
+    # ---------------------------
+    # Allocation section callbacks
+    # ---------------------------
+    
+    def _get_combined_positions():
+        """Helper function to get combined positions from both depots."""
+        # Update prices for both depots
+        data_cd_1.update_prices()
+        data_cd_2.update_prices()
+        
+        # Get positions from both services (already processed and enriched)
+        positions_cd_1 = service_cd_1.get_positions()
+        positions_cd_2 = service_cd_2.get_positions()
+        
+        # Combine the positions
+        if not positions_cd_1.empty and not positions_cd_2.empty:
+            combined = pd.concat([positions_cd_1, positions_cd_2], ignore_index=True)
+        elif not positions_cd_1.empty:
+            combined = positions_cd_1
+        elif not positions_cd_2.empty:
+            combined = positions_cd_2
+        else:
+            combined = pd.DataFrame()
+        
+        return combined
+
+    @app.callback(
+        Output("asset-class-pie", "figure"),
+        Input("allocation-section", "id"),  # Trigger when allocation section is accessed
+    )
+    def update_asset_class_pie(_):
+        combined_positions = _get_combined_positions()
+        return create_allocation_pie_chart(combined_positions, 'asset_class', 'Asset Class')
+
+    @app.callback(
+        Output("sector-pie", "figure"),
+        Input("allocation-section", "id"),
+    )
+    def update_sector_pie(_):
+        combined_positions = _get_combined_positions()
+        return create_allocation_pie_chart(combined_positions, 'sector', 'Sector')
+
+    @app.callback(
+        Output("region-pie", "figure"),
+        Input("allocation-section", "id"),
+    )
+    def update_region_pie(_):
+        combined_positions = _get_combined_positions()
+        return create_allocation_pie_chart(combined_positions, 'region', 'Region')
+
+    @app.callback(
+        Output("risk-pie", "figure"),
+        Input("allocation-section", "id"),
+    )
+    def update_risk_pie(_):
+        combined_positions = _get_combined_positions()
+        return create_allocation_pie_chart(combined_positions, 'risk_estimation', 'Pers. Risk Estimation')

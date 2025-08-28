@@ -126,12 +126,89 @@ class DataManager:
         df["current_price"] = pd.to_numeric(df["currentPrice.price.value"], errors="coerce").round(2)
         df["current_value"] = pd.to_numeric(df["currentValue.value"], errors="coerce").round(0)
         
-        # Add company name and ticker from WKN metadata service
-        # These columns provide complete security information but won't be shown in frontend
+        # Add complete metadata from WKN metadata service for allocation analysis
+        # These columns provide comprehensive security information for charts and analysis
         df["name"] = df["wkn"].apply(wkn_metadata_service.get_name)
         df["ticker"] = df["wkn"].apply(wkn_metadata_service.get_ticker)
+        df["region"] = df["wkn"].apply(wkn_metadata_service.get_region)
+        df["asset_class"] = df["wkn"].apply(wkn_metadata_service.get_asset_class)
+        df["sector"] = df["wkn"].apply(wkn_metadata_service.get_sector)
+        df["risk_estimation"] = df["wkn"].apply(wkn_metadata_service.get_risk_estimation)
+
+        # Create dynamic allocation columns for advanced ETF breakdown analysis
+        df = self._add_allocation_columns(df)
 
         # store as a pandas datafield
+        return df
+
+    def _add_allocation_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Add dynamic allocation columns for region and sector breakdown analysis.
+        
+        For ETFs with breakdown data, distributes the position value across multiple
+        region/sector columns based on the breakdown percentages. For non-ETFs,
+        allocates 100% to the single region/sector.
+        
+        Args:
+            df: DataFrame with position data
+            
+        Returns:
+            Enhanced DataFrame with dynamic allocation columns
+        """
+        if df.empty:
+            return df
+
+        # Get all unique regions and sectors for dynamic column creation
+        all_regions = wkn_metadata_service.get_all_regions()
+        all_sectors = wkn_metadata_service.get_all_sectors()
+
+        # Initialize allocation columns with zeros
+        for region in all_regions:
+            col_name = f"region_{region.lower().replace(' ', '_').replace('-', '_')}_value"
+            df[col_name] = 0.0
+
+        for sector in all_sectors:
+            col_name = f"sector_{sector.lower().replace(' ', '_').replace('-', '_')}_value"
+            df[col_name] = 0.0
+
+        # Process each position to distribute values across allocation columns
+        for idx, row in df.iterrows():
+            wkn = row['wkn']
+            current_value = row['current_value']
+            
+            if pd.isna(current_value) or current_value <= 0:
+                continue
+                
+            metadata = wkn_metadata_service.get_metadata(wkn)
+            if not metadata:
+                continue
+
+            # Handle region allocation
+            if metadata.is_etf() and metadata.has_region_breakdown():
+                # ETF with region breakdown - distribute across regions
+                for region, percentage in metadata.region_breakdown.items():
+                    col_name = f"region_{region.lower().replace(' ', '_').replace('-', '_')}_value"
+                    if col_name in df.columns:
+                        df.loc[idx, col_name] = current_value * percentage
+            elif metadata.region and metadata.region.strip():
+                # Single region allocation
+                col_name = f"region_{metadata.region.lower().replace(' ', '_').replace('-', '_')}_value"
+                if col_name in df.columns:
+                    df.loc[idx, col_name] = current_value
+
+            # Handle sector allocation
+            if metadata.is_etf() and metadata.has_sector_breakdown():
+                # ETF with sector breakdown - distribute across sectors
+                for sector, percentage in metadata.sector_breakdown.items():
+                    col_name = f"sector_{sector.lower().replace(' ', '_').replace('-', '_')}_value"
+                    if col_name in df.columns:
+                        df.loc[idx, col_name] = current_value * percentage
+            elif metadata.sector and metadata.sector.strip():
+                # Single sector allocation
+                col_name = f"sector_{metadata.sector.lower().replace(' ', '_').replace('-', '_')}_value"
+                if col_name in df.columns:
+                    df.loc[idx, col_name] = current_value
+
         return df
         
 

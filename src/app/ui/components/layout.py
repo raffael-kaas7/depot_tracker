@@ -42,6 +42,7 @@ def create_layout():
             dbc.Nav([
                 dbc.NavLink("📈 Assets", id="nav-assets", active=True, className="pill px-3 py-2"),
                 dbc.NavLink("💸 Dividends", id="nav-dividends", active=False, className="pill px-3 py-2"),
+                dbc.NavLink("🍕 Allocation", id="nav-allocation", active=False, className="pill px-3 py-2"),
             ], vertical=True, pills=True, className="gap-2"),
             html.Hr(className="border-secondary my-4"),
         ])
@@ -113,6 +114,26 @@ def create_layout():
         html.Div(id="depot-table", className="mt-3")
     ], id="assets-section")
 
+    # --- Allocation section ---
+    allocation_section = html.Div([
+        dbc.Row([
+            dbc.Col([
+                dcc.Graph(id="asset-class-pie"),
+            ], lg=6, md=12, className="mb-4"),
+            dbc.Col([
+                dcc.Graph(id="risk-pie"),
+            ], lg=6, md=12, className="mb-4"),
+        ]),
+        dbc.Row([
+            dbc.Col([
+                dcc.Graph(id="sector-pie"),
+            ], lg=6, md=12, className="mb-4"),
+            dbc.Col([
+                dcc.Graph(id="region-pie"),
+            ], lg=6, md=12, className="mb-4"),
+        ]),
+    ], id="allocation-section", style={"display": "none"})
+
     # --- Dividends section ---
     dividends_section = html.Div([
         dbc.Row([
@@ -137,6 +158,7 @@ def create_layout():
             html.Hr(className="border-secondary my-3"),
             # Tab-specific content below
             assets_section,
+            allocation_section,
             dividends_section,
         ], className="px-2")
     ])
