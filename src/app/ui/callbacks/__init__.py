@@ -1,7 +1,7 @@
 """
 Callbacks for the Depot Tracker application
 """
-from dash import Output, Input, callback_context, dash_table, html
+from dash import Output, Input, callback_context, dash_table, html, dcc
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
@@ -18,7 +18,7 @@ from app.services.dividend_service import DividendService
 from app.api.comdirect_api import ComdirectAPI
 from app.services.data_service import DataManager
 from app.ui.components.layout import create_summary_row
-from app.ui.components.charts import create_allocation_pie_chart
+from app.ui.components.charts import create_allocation_pie_chart, create_historical_depot_chart, create_combined_historical_chart
 from config.settings import get_settings
 
 
@@ -393,3 +393,69 @@ def register_callbacks(app):
     def update_risk_pie(_):
         combined_positions = _get_combined_positions()
         return create_allocation_pie_chart(combined_positions, 'risk_estimation', 'Pers. Risk Estimation')
+
+    @app.callback(
+        Output("historical-charts-container", "children"),
+        Input("table-switch", "value"),  # React to table mode changes
+        Input("assets-section", "id"),   # Also trigger when assets section is accessed
+    )
+    def update_historical_charts(table_mode, _):
+        """Update the historical charts based on table mode (separated vs combined)."""
+        # Get snapshot data for both depots
+        depot_1_snapshots = data_cd_1.get_snapshot_data()
+        depot_2_snapshots = data_cd_2.get_snapshot_data()
+        
+        # Prepare data structure
+        snapshots_data = {}
+        if depot_1_snapshots:
+            snapshots_data[DEPOT_1_NAME] = depot_1_snapshots
+        if depot_2_snapshots:
+            snapshots_data[DEPOT_2_NAME] = depot_2_snapshots
+        
+        if not snapshots_data:
+            return dbc.Alert("No historical data available. Data will appear after synchronization.", 
+                           color="secondary", className="mt-3")
+        
+        # Check table mode: True = Separated Depots, False = Combined View
+        if table_mode:  # Separated view - show individual charts
+            charts = []
+            
+            # Create individual charts for each depot
+            if DEPOT_1_NAME in snapshots_data:
+                fig1 = create_historical_depot_chart(
+                    {DEPOT_1_NAME: snapshots_data[DEPOT_1_NAME]}, 
+                    f"{DEPOT_1_NAME}",
+                    show_invested_capital=True  # Include invested capital (toggleable via legend)
+                )
+                charts.append(
+                    dbc.Col([
+                        dcc.Graph(figure=fig1, className="mb-3")
+                    ], lg=6, md=12)
+                )
+            
+            if DEPOT_2_NAME in snapshots_data:
+                fig2 = create_historical_depot_chart(
+                    {DEPOT_2_NAME: snapshots_data[DEPOT_2_NAME]}, 
+                    f"{DEPOT_2_NAME}",
+                    show_invested_capital=True  # Include invested capital (toggleable via legend)
+                )
+                charts.append(
+                    dbc.Col([
+                        dcc.Graph(figure=fig2, className="mb-3")
+                    ], lg=6, md=12)
+                )
+            
+            return dbc.Row(charts, className="g-3")
+            
+        else:  # Combined view - show single combined chart
+            fig_combined = create_combined_historical_chart(
+                snapshots_data, 
+                "Combined Portfolio - Historical Performance",
+                show_invested_capital=True  # Include invested capital (toggleable via legend)
+            )
+            
+            return dbc.Row([
+                dbc.Col([
+                    dcc.Graph(figure=fig_combined, className="mb-3")
+                ], width=12)
+            ])

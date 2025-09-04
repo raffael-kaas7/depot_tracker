@@ -286,3 +286,22 @@ class DataManager:
             print("✅ No new dividends retrieved via Rest API.")
 
         return all_divs
+
+    def get_snapshot_data(self):
+        """
+        Load snapshot data from snapshot.json file for this depot.
+        
+        Returns:
+            List of dictionaries containing daily snapshots with date, current_value, and invested_capital
+        """
+        snapshot_path = os.path.join(self.data_folder, "snapshot.json")
+        
+        if not os.path.exists(snapshot_path):
+            return []
+            
+        try:
+            with open(snapshot_path, 'r') as f:
+                snapshots = json.load(f)
+            return snapshots
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []

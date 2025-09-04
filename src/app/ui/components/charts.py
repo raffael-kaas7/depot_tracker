@@ -252,3 +252,241 @@ def create_allocation_summary(df: pd.DataFrame) -> pd.DataFrame:
         return summary_df.sort_values(['Category Type', 'Percentage (%)'], ascending=[True, False])
     
     return pd.DataFrame()
+
+
+def create_historical_depot_chart(snapshots_data: dict, title: str = "Historical Depot Performance", show_invested_capital: bool = True) -> go.Figure:
+    """
+    Create a line chart showing historical performance of depot pools over time.
+    
+    Args:
+        snapshots_data: Dictionary with depot names as keys and snapshot data as values
+        title: Title for the chart
+        show_invested_capital: Whether to show invested capital lines (default: True)
+        
+    Returns:
+        Plotly figure object for the line chart
+    """
+    if not snapshots_data or all(not data for data in snapshots_data.values()):
+        return _create_empty_chart(title, "No historical data available")
+    
+    fig = go.Figure()
+    
+    # Color palette for different depots
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+    
+    for i, (depot_name, snapshots) in enumerate(snapshots_data.items()):
+        if not snapshots:
+            continue
+            
+        # Convert to DataFrame for easier manipulation
+        df = pd.DataFrame(snapshots)
+        
+        if df.empty:
+            continue
+            
+        # Convert date strings to datetime objects
+        df['date'] = pd.to_datetime(df['date'])
+        
+        # Sort by date to ensure proper line connection
+        df = df.sort_values('date')
+        
+        # Calculate performance metrics
+        df['profit_loss'] = df['current_value'] - df['invested_capital']
+        df['performance_pct'] = ((df['current_value'] - df['invested_capital']) / df['invested_capital'] * 100).round(2)
+        
+        color = colors[i % len(colors)]
+        
+        # Add current value line
+        fig.add_trace(go.Scatter(
+            x=df['date'],
+            y=df['current_value'],
+            mode='lines+markers',
+            name='Current Value',
+            line=dict(color=color, width=2),
+            marker=dict(size=4),
+            hovertemplate=(
+                f'<b>{depot_name}</b><br>' +
+                'Date: %{x}<br>' +
+                'Current Value: €%{y:,.0f}<br>' +
+                'Performance: %{customdata:.1f}%<br>' +
+                '<extra></extra>'
+            ),
+            customdata=df['performance_pct']
+        ))
+        
+        # Add invested capital line (dashed) - always add, but control visibility
+        if show_invested_capital:
+            fig.add_trace(go.Scatter(
+                x=df['date'],
+                y=df['invested_capital'],
+                mode='lines',
+                name='Invested Capital',
+                line=dict(color=color, width=1, dash='dash'),
+                visible=True,  # Start visible, but can be toggled via legend
+                hovertemplate=(
+                    f'<b>{depot_name}</b><br>' +
+                    'Date: %{x}<br>' +
+                    'Invested Capital: €%{y:,.0f}<br>' +
+                    '<extra></extra>'
+                )
+            ))
+    
+    # Update layout with clickable legend
+    fig.update_layout(
+        title={
+            'text': title,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 18, 'color': 'white'}
+        },
+        xaxis_title="Date",
+        yaxis_title="Value (€)",
+        xaxis=dict(
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            color='white'
+        ),
+        yaxis=dict(
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            color='white',
+            tickformat='€,.0f'
+        ),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="right",
+            x=1,
+            bgcolor='rgba(0,0,0,0.5)',
+            itemclick="toggle",
+            itemdoubleclick="toggleothers"
+        ),
+        hovermode='x unified',
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
+    return fig
+
+
+def create_combined_historical_chart(snapshots_data: dict, title: str = "Combined Historical Performance", show_invested_capital: bool = True) -> go.Figure:
+    """
+    Create a combined line chart showing the sum of all depot values over time.
+    
+    Args:
+        snapshots_data: Dictionary with depot names as keys and snapshot data as values
+        title: Title for the chart
+        show_invested_capital: Whether to show invested capital line (default: True)
+        
+    Returns:
+        Plotly figure object for the combined line chart
+    """
+    if not snapshots_data or all(not data for data in snapshots_data.values()):
+        return _create_empty_chart(title, "No historical data available")
+    
+    # Combine all depot data by date
+    combined_data = {}
+    
+    for depot_name, snapshots in snapshots_data.items():
+        if not snapshots:
+            continue
+            
+        for snapshot in snapshots:
+            date = snapshot['date']
+            if date not in combined_data:
+                combined_data[date] = {
+                    'date': date,
+                    'current_value': 0,
+                    'invested_capital': 0
+                }
+            combined_data[date]['current_value'] += snapshot['current_value']
+            combined_data[date]['invested_capital'] += snapshot['invested_capital']
+    
+    if not combined_data:
+        return _create_empty_chart(title, "No data to combine")
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(combined_data.values()))
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values('date')
+    
+    # Calculate performance metrics
+    df['profit_loss'] = df['current_value'] - df['invested_capital']
+    df['performance_pct'] = ((df['current_value'] - df['invested_capital']) / df['invested_capital'] * 100).round(2)
+    
+    fig = go.Figure()
+    
+    # Add combined current value line
+    fig.add_trace(go.Scatter(
+        x=df['date'],
+        y=df['current_value'],
+        mode='lines+markers',
+        name='Total Current Value',
+        line=dict(color='#1f77b4', width=3),
+        marker=dict(size=5),
+        hovertemplate=(
+            '<b>Combined Portfolio</b><br>' +
+            'Date: %{x}<br>' +
+            'Total Value: €%{y:,.0f}<br>' +
+            'Performance: %{customdata:.1f}%<br>' +
+            '<extra></extra>'
+        ),
+        customdata=df['performance_pct']
+    ))
+    
+    # Add combined invested capital line (dashed) - always add, but control visibility
+    if show_invested_capital:
+        fig.add_trace(go.Scatter(
+            x=df['date'],
+            y=df['invested_capital'],
+            mode='lines',
+            name='Total Invested Capital',
+            line=dict(color='#1f77b4', width=2, dash='dash'),
+            visible=True,  # Start visible, but can be toggled via legend
+            hovertemplate=(
+                '<b>Combined Portfolio</b><br>' +
+                'Date: %{x}<br>' +
+                'Invested Capital: €%{y:,.0f}<br>' +
+                '<extra></extra>'
+            )
+        ))
+    
+    # Update layout with clickable legend
+    fig.update_layout(
+        title={
+            'text': title,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 18, 'color': 'white'}
+        },
+        xaxis_title="Date",
+        yaxis_title="Value (€)",
+        xaxis=dict(
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            color='white'
+        ),
+        yaxis=dict(
+            gridcolor='rgba(128, 128, 128, 0.2)',
+            color='white',
+            tickformat='€,.0f'
+        ),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            bgcolor='rgba(0,0,0,0.5)',
+            # Enable legend clicking to show/hide traces
+            itemclick="toggle",
+            itemdoubleclick="toggleothers"
+        ),
+        hovermode='x unified',
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
+    return fig

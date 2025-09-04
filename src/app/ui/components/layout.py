@@ -111,6 +111,8 @@ def create_layout():
 
     assets_section = html.Div([
         assets_controls,
+        # Historical Performance Charts - dynamically updated based on table mode
+        html.Div(id="historical-charts-container", className="mb-4"),
         html.Div(id="depot-table", className="mt-3")
     ], id="assets-section")
 
