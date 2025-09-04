@@ -11,8 +11,10 @@ import datetime as dt
 from zoneinfo import ZoneInfo
 import yaml
 import plotly.express as px
+import plotly.graph_objects as go
 
 from app.services.depot_service import DepotService
+from app.services.dividend_service import DividendService
 from app.api.comdirect_api import ComdirectAPI
 from app.services.data_service import DataManager
 from app.ui.components.layout import create_summary_row
@@ -51,6 +53,9 @@ def register_callbacks(app):
     # Service objects for specific KPIs
     service_cd_1 = DepotService(data_cd_1)
     service_cd_2 = DepotService(data_cd_2)
+    
+    # Dividend service for cross-depot dividend calculations
+    dividend_service = DividendService([service_cd_1, service_cd_2])
     
     # Register services in global registry for scheduler access
     from app.services.service_registry import registry
@@ -264,64 +269,43 @@ def register_callbacks(app):
         Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
     )
     def show_dividend_chart(_):
-        # Persistent dividends storage file (shared by all depots)
-        dividends_file = "data/dividends.yaml"
+        # Get chart data from service
+        chart_data = dividend_service.get_monthly_chart_data()
+        stats = dividend_service.get_dividend_statistics()
         
-        # Refresh (if your services write to dividends_file)
-        try:
-            service_cd_1.get_dividends()
-            service_cd_2.get_dividends()
-        except Exception:
-            pass
-
-        try:
-            with open(dividends_file, "r", encoding="utf-8") as f:
-                dividends = yaml.safe_load(f) or []
-        except Exception:
-            dividends = []
-
-        df = pd.DataFrame(dividends)
-        if df.empty:
-            fig = px.bar(pd.DataFrame({"month_name": [], "amount": [], "year": []}), x="month_name", y="amount", color="year")
+        if not chart_data["monthly_data"]:
+            fig = px.bar(pd.DataFrame({"month_name": [], "amount": [], "year": []}), 
+                        x="month_name", y="amount", color="year")
             return fig, html.Div("No dividend data available.", className="text-muted")
 
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
-        df = df.dropna(subset=["date"])
-        df["year"] = df["date"].dt.year
-        df["month"] = df["date"].dt.month
-        df["month_name"] = df["date"].dt.strftime("%b")
-        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
-
-        all_years = sorted(df["year"].unique())
-
-        month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        all_months = pd.DataFrame([(y, i, m) for y in all_years for i, m in enumerate(month_order, start=1)],
-                                  columns=["year", "month", "month_name"])
-        monthly = df.groupby(["year", "month", "month_name"])["amount"].sum().reset_index()
-        monthly = pd.merge(all_months, monthly, on=["year", "month", "month_name"], how="left")
-        monthly["amount"] = monthly["amount"].fillna(0)
-        monthly["year"] = monthly["year"].astype(str)
-
-        fig = px.bar(monthly, x="month_name", y="amount", color="year", barmode="group",
+        # Create chart
+        monthly_df = pd.DataFrame(chart_data["monthly_data"])
+        fig = px.bar(monthly_df, x="month_name", y="amount", color="year", barmode="group",
                      labels={"amount": "Dividends in €", "month_name": "Month", "year": "Year"},
                      height=450)
         fig.update_layout(paper_bgcolor="#0b1e25", plot_bgcolor="#0b1e25", font_color="#e5e5e5", font_size=14,
                           margin=dict(l=20, r=20, t=40, b=20))
 
-        total = df["amount"].sum()
-        per_year = df.groupby("year")["amount"].sum()
-
+        # Create summary using statistics from service
         summary = html.Div([
-            html.Div(f"👑 All time Dividends: {total:.0f} €", style={"margin-bottom": "10px"}),
+            html.Div(f"All time Dividends: {stats['total']:.0f} €", 
+                     style={"margin-bottom": "10px", "font-weight": "bold"}),
+            html.Div(f"Monthly Average (Last 12 Months): {stats['avg_12_months']:.0f} €", 
+                    style={"margin-bottom": "20px", "font-weight": "bold"}),
             *[
                 html.Div(
                     [
-                        html.Span(f"📅 {int(y)}: {amt:.0f} €", style={"margin-right": "30px"})
-                        for y, amt in per_year.items()][i:i+5]
-                    ,
-                    style={"margin-bottom": "5px"}
+                        html.Span(
+                            f"📅 {int(year)}: {amt:.0f} €" + 
+                            (f" (+{change:.1f}%)" if change and change > 0 else 
+                             f" ({change:.1f}%)" if change and change < 0 else ""),
+                            style={"margin-right": "30px"}
+                        )
+                        for year, amt, change in stats['year_changes'][i:i+3]
+                    ],
+                    style={"margin-bottom": "5px",}
                 )
-                for i in range(0, len(per_year), 5)
+                for i in range(0, len(stats['year_changes']), 3)
             ]
         ], style={"text-align": "left", "list-style-type": "none", "padding": "0"})
         return fig, summary
@@ -332,18 +316,12 @@ def register_callbacks(app):
         Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
     )
     def render_dividend_table(_):
-        dividends_file = "data/dividends.yaml"
+        dividends = dividend_service.get_all_dividends()
         
-        try:
-            with open(dividends_file, "r", encoding="utf-8") as f:
-                dividends = yaml.safe_load(f) or []
-        except Exception:
-            dividends = []
-
-        df = pd.DataFrame(dividends)
-        if df.empty:
+        if not dividends:
             return dbc.Alert("No dividend data available.", color="secondary")
 
+        df = pd.DataFrame(dividends)
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"]).sort_values("date", ascending=False)
         

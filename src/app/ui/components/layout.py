@@ -97,7 +97,7 @@ def create_layout():
                         id="table-switch",
                         label="Separated Depots",
                         labelPosition="right",
-                        value=False,  # Default value corresponds to "Combined Depots"
+                        value=True,  # Default value corresponds to "Separated Depots"
                         className="text-light",
                         style={"marginBottom": "16px", "width": "150px"},
                     )
