@@ -6,22 +6,29 @@ Some new features will be added soon.
 
 ## 1. Feature Overview
 
-- Retrieve data from main and secondary Comdirect depots and accounts via Comdirect REST API (Developer Portal). Authenticate via photo TAN.
-- List current positions including purchase prices & values, current prices & values, performance and allocation. Current stock prices are retrieved from yfinance.
+- Retrieve data from main and secondary depots and accounts via the Comdirect REST API (Developer Portal). Authenticate via photo TAN.
+- List current positions including purchase prices & values, current prices & values, performance, and allocation. Current stock prices are retrieved from Yahoo Finance.
 
-<center><img src="doc/img/depot_combined.png" alt="drawing" width="80%"/></center>
+<center><img src="doc/img/authentication-graphs-hidden.png" alt="drawing" width="80%"/></center>
 
-- Continuously parse account statements to capture and store dividend payments in a persistent local database 
+- Continuously parse account statements to capture and store dividend payments in a persistent local database
 - List total dividends received by a single asset in the depot table
-- List the 3-Month-Momentum of an asset. I don't like tracking stock prices all the time. This metric quickly gives me an impression how an asset is currently performing compared to overall market.
+- List the 3-Month-Momentum of an asset. I don't like tracking stock prices all the time. This metric quickly gives me an impression of how an asset is currently performing compared to the overall market.
 - List multiple depots separately or combined in a single portfolio (allocation adapts accordingly)
 
-<center><img src="doc/img/depot_separated.png" alt="drawing" width="80%"/></center>
+<center><img src="doc/img/multiple-depots-hidden.png" alt="drawing" width="80%"/></center>
 
-- Visualizes net dividend income over multiple years
-- List dividend income in a table. Filter for specific companies, dates, net amounts.
+- Comprehensive dividend analytics: total dividends per asset, net income over multiple years, monthly averages
+- Detailed dividend income table with filtering by company, date ranges, and amounts
+- Visual charts showing dividend income trends over time
 
-<center><img src="doc/img/depot_dividends.png" alt="drawing" width="80%"/></center>
+<center><img src="doc/img/dividends-hidden.png" alt="drawing" width="80%"/></center>
+
+- Calculate asset allocation and visualize it with pie charts. In addition to the usual categories (asset classes, sectors, regions), I also added a custom "Personal Risk Estimation" category, allowing me to classify each asset based on my own risk assessment (low, medium, high risk). This gives me a quick overview of the overall risk profile of my portfolio from my personal perspective.
+
+<center><img src="doc/img/asset-allocation.png" alt="drawing" width="80%"/></center>
+
+
 
 
 ### 2. Set up your environment

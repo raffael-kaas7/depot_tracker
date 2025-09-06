@@ -49,7 +49,7 @@ def main() -> None:
     app.run(
         host=host,
         port=port,
-        debug=debug
+        debug=False
     )
 
 

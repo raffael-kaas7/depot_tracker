@@ -3,7 +3,7 @@
     "name": "Microsoft",
     "ticker": "MSF.DE",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "IT",
     "risk_estimation": "low"
   },
@@ -11,7 +11,7 @@
     "name": "Apple",
     "ticker": "AAPL",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "IT",
     "risk_estimation": "low"
   },
@@ -19,7 +19,7 @@
     "name": "Alphabet",
     "ticker": "GOOG",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "Communication Services",
     "risk_estimation": "medium"
   },
@@ -27,7 +27,7 @@
     "name": "Nvidia",
     "ticker": "NVD.DE",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "IT",
     "risk_estimation": "medium"
   },
@@ -35,7 +35,7 @@
     "name": "Procter & Gamble",
     "ticker": "PRG.F",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "Consumer Staples",
     "risk_estimation": "low"
   },
@@ -43,7 +43,7 @@
     "name": "Unilever",
     "ticker": "UNVB.SG",
     "region": "Europe",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "Consumer Staples",
     "risk_estimation": "low"
   },
@@ -59,7 +59,7 @@
     "name": "Coca Cola",
     "ticker": "KO",
     "region": "North America",
-    "asset_class": "Equity",
+    "asset_class": "Stocks",
     "sector": "Consumer Staples",
     "risk_estimation": "low"
   }
