@@ -12,15 +12,16 @@ The factory handles:
 - Layout setup for the main dashboard interface
 - Background scheduler initialization for data updates
 """
-from dash import Dash
-import dash_bootstrap_components as dbc
-from flask import Flask
-import locale
-from typing import Optional
+
+from src.app.ui.callbacks.callbacks import register_callbacks
+from app.services.scheduler_service import scheduler_service
+from app.ui.layout import get_main_layout
 
 from config.settings import get_settings, Config
 from config.dash_config import DashConfig
 
+from dash import Dash
+import locale
 
 def create_app(config_name: str = 'default') -> Dash:
     """
@@ -75,16 +76,13 @@ def create_app(config_name: str = 'default') -> Dash:
     
     # Register all interactive callbacks that handle user interactions
     # Callbacks are functions that update the dashboard when users interact with components
-    from app.ui.callbacks import register_callbacks
     register_callbacks(app)
     
     # Set the main dashboard layout that defines the overall page structure
-    from app.ui.layout import get_main_layout
     app.layout = get_main_layout()
     
     # Initialize background scheduler for automated data updates after callbacks are registered
     # This ensures that the service registry is populated before the scheduler tries to use it
-    from app.services.scheduler_service import scheduler_service
     scheduler_service.start_scheduler()
     
     return app

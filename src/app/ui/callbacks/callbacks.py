@@ -5,13 +5,9 @@ from dash import Output, Input, callback_context, dash_table, html, dcc
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
-import os
-import json
 import datetime as dt
 from zoneinfo import ZoneInfo
-import yaml
 import plotly.express as px
-import plotly.graph_objects as go
 
 from app.services.depot_service import DepotService
 from app.services.dividend_service import DividendService

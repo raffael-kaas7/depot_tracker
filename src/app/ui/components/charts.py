@@ -8,8 +8,6 @@ interactive pie charts for asset class, sector, region, and risk estimation.
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from typing import Optional
-
 
 def create_allocation_pie_chart(df: pd.DataFrame, category: str, title: str) -> go.Figure:
     """
@@ -320,9 +318,9 @@ def create_historical_depot_chart(snapshots_data: dict, title: str = "Historical
                 x=df['date'],
                 y=df['invested_capital'],
                 mode='lines',
-                name='Invested Capital',
+                name=f'{depot_name} - Invested Capital',
                 line=dict(color=color, width=1, dash='dash'),
-                visible=True,  # Start visible, but can be toggled via legend
+                visible='legendonly',  # Start hidden, toggleable via legend
                 hovertemplate=(
                     f'<b>{depot_name}</b><br>' +
                     'Date: %{x}<br>' +
@@ -443,7 +441,7 @@ def create_combined_historical_chart(snapshots_data: dict, title: str = "Combine
             mode='lines',
             name='Total Invested Capital',
             line=dict(color='#1f77b4', width=2, dash='dash'),
-            visible=True,  # Start visible, but can be toggled via legend
+            visible='legendonly',  # Start hidden, toggleable via legend
             hovertemplate=(
                 '<b>Combined Portfolio</b><br>' +
                 'Date: %{x}<br>' +

@@ -14,9 +14,6 @@ The service provides:
 - Performance metrics and KPIs
 """
 from typing import Dict, List, Any, Optional
-import yaml
-import os
-from datetime import datetime
 import pandas as pd
 
 from app.services.data_service import DataManager

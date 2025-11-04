@@ -8,8 +8,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import yaml
-import os
-
 
 class DividendService:
     """

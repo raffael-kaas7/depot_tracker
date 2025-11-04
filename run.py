@@ -10,13 +10,12 @@ various financial APIs.
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Add src directory to Python path to enable imports from our custom modules
 src_path = Path(__file__).parent / 'src'
 sys.path.insert(0, str(src_path))
 
-from src.app import create_app
+from src.app.app_factory import create_app
 
 
 def main() -> None:
