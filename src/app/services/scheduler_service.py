@@ -197,7 +197,7 @@ class SchedulerService:
         self.scheduler.add_job(
             func=data_cd_1.update_prices, 
             trigger="interval", 
-            minutes=0.1,  # TODO: Increase interval for production (e.g., 15 minutes)
+            minutes=0.5,  # TODO: Increase interval for production (e.g., 15 minutes)
             id="prices1", 
             max_instances=1,  # Prevent overlapping executions
             coalesce=True  # Skip missed executions if system is busy
@@ -206,7 +206,7 @@ class SchedulerService:
         self.scheduler.add_job(
             func=data_cd_2.update_prices, 
             trigger="interval", 
-            minutes=0.1,  # TODO: Increase interval for production
+            minutes=0.5,  # TODO: Increase interval for production
             id="prices2", 
             max_instances=1, 
             coalesce=True

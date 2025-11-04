@@ -260,8 +260,9 @@ def register_callbacks(app):
     # Dividends
     # ---------------------------
     @app.callback(
-        Output("dividend-chart", "figure"),
         Output("dividend-summary", "children"),
+        Output("dividend-chart", "figure"),
+        Output("dividend-details", "children"),
         Input("dividend-chart", "id"),  # Trigger the callback when the chart is loaded
     )
     def show_dividend_chart(_):
@@ -284,10 +285,15 @@ def register_callbacks(app):
 
         # Create summary using statistics from service
         summary = html.Div([
-            html.Div(f"All time Dividends: {stats['total']:.0f} €", 
-                     style={"margin-bottom": "10px", "font-weight": "bold"}),
-            html.Div(f"Monthly Average (Last 12 Months): {stats['avg_12_months']:.0f} €", 
-                    style={"margin-bottom": "20px", "font-weight": "bold"}),
+            html.Div(f"💰  All time Dividends: {stats['total']:.0f} €", 
+                 style={"margin-bottom": "10px"}),
+            html.Div(f"📅  Monthly Average (Last 12 Months): {stats['avg_12_months']:.0f} €", 
+                style={"margin-bottom": "20px"}),
+        ], style={"text-align": "left", "list-style-type": "none", "padding": "0"})
+
+        # Create details using statistics from service
+        num_years_in_row = 6
+        details = html.Div([
             *[
                 html.Div(
                     [
@@ -297,14 +303,15 @@ def register_callbacks(app):
                              f" ({change:.1f}%)" if change and change < 0 else ""),
                             style={"margin-right": "30px"}
                         )
-                        for year, amt, change in stats['year_changes'][i:i+3]
+                        for year, amt, change in stats['year_changes'][i:i+num_years_in_row]
                     ],
                     style={"margin-bottom": "5px",}
                 )
-                for i in range(0, len(stats['year_changes']), 3)
+                for i in range(0, len(stats['year_changes']), num_years_in_row)
             ]
         ], style={"text-align": "left", "list-style-type": "none", "padding": "0"})
-        return fig, summary
+
+        return summary, fig, details
 
     # RAW dividend table — ALWAYS visible
     @app.callback(
@@ -338,9 +345,6 @@ def register_callbacks(app):
     
     def _get_combined_positions():
         """Helper function to get combined positions from both depots."""
-        # Update prices for both depots
-        data_cd_1.update_prices()
-        data_cd_2.update_prices()
         
         # Get positions from both services (already processed and enriched)
         positions_cd_1 = service_cd_1.get_positions()
@@ -360,35 +364,20 @@ def register_callbacks(app):
 
     @app.callback(
         Output("asset-class-pie", "figure"),
+        Output("sector-pie", "figure"),
+        Output("region-pie", "figure"),
+        Output("risk-pie", "figure"),
         Input("allocation-section", "id"),  # Trigger when allocation section is accessed
     )
     def update_asset_class_pie(_):
         combined_positions = _get_combined_positions()
-        return create_allocation_pie_chart(combined_positions, 'asset_class', 'Asset Class')
+        asset_class = create_allocation_pie_chart(combined_positions, 'asset_class', 'Asset Class')
+        sector = create_allocation_pie_chart(combined_positions, 'sector', 'Sector')
+        region = create_allocation_pie_chart(combined_positions, 'region', 'Region')
+        risk = create_allocation_pie_chart(combined_positions, 'risk_estimation', 'Pers. Risk Estimation')
 
-    @app.callback(
-        Output("sector-pie", "figure"),
-        Input("allocation-section", "id"),
-    )
-    def update_sector_pie(_):
-        combined_positions = _get_combined_positions()
-        return create_allocation_pie_chart(combined_positions, 'sector', 'Sector')
-
-    @app.callback(
-        Output("region-pie", "figure"),
-        Input("allocation-section", "id"),
-    )
-    def update_region_pie(_):
-        combined_positions = _get_combined_positions()
-        return create_allocation_pie_chart(combined_positions, 'region', 'Region')
-
-    @app.callback(
-        Output("risk-pie", "figure"),
-        Input("allocation-section", "id"),
-    )
-    def update_risk_pie(_):
-        combined_positions = _get_combined_positions()
-        return create_allocation_pie_chart(combined_positions, 'risk_estimation', 'Pers. Risk Estimation')
+        return asset_class, sector, region, risk
+    
 
     @app.callback(
         Output("historical-charts-container", "children"),

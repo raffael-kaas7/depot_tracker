@@ -135,13 +135,13 @@ class DividendService:
             Dictionary containing chart data and configuration
         """
         dividends = self.get_all_dividends()
-        
+        month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"]
+
         if not dividends:
             return {
                 "monthly_data": [],
                 "all_years": [],
-                "month_order": ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", 
-                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                "month_order": month_order
             }
         
         df = pd.DataFrame(dividends)
@@ -153,7 +153,6 @@ class DividendService:
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0)
 
         all_years = sorted(df["year"].unique())
-        month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         
         # Create complete month grid
         all_months = pd.DataFrame(

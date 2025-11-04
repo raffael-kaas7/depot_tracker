@@ -140,8 +140,9 @@ def create_layout():
     dividends_section = html.Div([
         dbc.Row([
             dbc.Col([
+                html.H5(id="dividend-summary", className="text-light mb-2"),
                 dcc.Graph(id="dividend-chart"),
-                html.Div(id="dividend-summary", className="mt-4 text-light"),
+                html.Div(id="dividend-details", className="mt-4 text-light"),
                 html.Hr(className="border-secondary my-4"),
                 html.H5("Raw Dividend Data", className="text-light mb-2"),
                 # Always visible raw data table
