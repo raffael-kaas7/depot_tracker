@@ -414,7 +414,7 @@ def register_callbacks(app):
                 )
                 charts.append(
                     dbc.Col([
-                        dcc.Graph(figure=fig1, className="mb-3")
+                        dcc.Graph(figure=fig1, className="mb-3", config={"responsive": False}, style={"height": "450px"})
                     ], lg=6, md=12)
                 )
             
@@ -426,7 +426,7 @@ def register_callbacks(app):
                 )
                 charts.append(
                     dbc.Col([
-                        dcc.Graph(figure=fig2, className="mb-3")
+                        dcc.Graph(figure=fig2, className="mb-3", config={"responsive": False}, style={"height": "450px"})
                     ], lg=6, md=12)
                 )
             
@@ -441,6 +441,6 @@ def register_callbacks(app):
             
             return dbc.Row([
                 dbc.Col([
-                    dcc.Graph(figure=fig_combined, className="mb-3")
+                    dcc.Graph(figure=fig_combined, className="mb-3", config={"responsive": False}, style={"height": "450px"})
                 ], width=12)
             ])

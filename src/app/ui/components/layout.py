@@ -120,18 +120,18 @@ def create_layout():
     allocation_section = html.Div([
         dbc.Row([
             dbc.Col([
-                dcc.Graph(id="asset-class-pie"),
+                dcc.Graph(id="asset-class-pie", config={"responsive": False}, style={"height": "420px"}),
             ], lg=6, md=12, className="mb-4"),
             dbc.Col([
-                dcc.Graph(id="risk-pie"),
+                dcc.Graph(id="risk-pie", config={"responsive": False}, style={"height": "420px"}),
             ], lg=6, md=12, className="mb-4"),
         ]),
         dbc.Row([
             dbc.Col([
-                dcc.Graph(id="sector-pie"),
+                dcc.Graph(id="sector-pie", config={"responsive": False}, style={"height": "420px"}),
             ], lg=6, md=12, className="mb-4"),
             dbc.Col([
-                dcc.Graph(id="region-pie"),
+                dcc.Graph(id="region-pie", config={"responsive": False}, style={"height": "420px"}),
             ], lg=6, md=12, className="mb-4"),
         ]),
     ], id="allocation-section", style={"display": "none"})
@@ -141,7 +141,7 @@ def create_layout():
         dbc.Row([
             dbc.Col([
                 html.H5(id="dividend-summary", className="text-light mb-2"),
-                dcc.Graph(id="dividend-chart"),
+                dcc.Graph(id="dividend-chart", config={"responsive": False}, style={"height": "450px"}),
                 html.Div(id="dividend-details", className="mt-4 text-light"),
                 html.Hr(className="border-secondary my-4"),
                 html.H5("Raw Dividend Data", className="text-light mb-2"),

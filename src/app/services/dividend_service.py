@@ -135,7 +135,7 @@ class DividendService:
             Dictionary containing chart data and configuration
         """
         dividends = self.get_all_dividends()
-        month_order = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+        month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
         if not dividends:
             return {
